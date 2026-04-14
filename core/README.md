@@ -46,6 +46,15 @@ This contract defines mandatory pre-write redaction gates, explicit persistence
 outcomes (`allow`, `redact`, `block`), minimum detection coverage classes, and
 safe fallback behavior when classification certainty or optional backends fail.
 
+## Memory scoping and conflict rules contract
+
+`core` publishes the v1 scope/conflict policy contract at
+[`contracts/memory-scoping-policy.v1.json`](./contracts/memory-scoping-policy.v1.json).
+
+This contract defines scope precedence, contradiction and supersession handling,
+cross-repository isolation defaults, and the safe fallback to the narrowest scope
+when scope resolution is incomplete.
+
 ## Boundary rules
 
 - Do not import or depend on Codex runtime types here.

@@ -1,6 +1,6 @@
 # SPEC-008 — Memory Scoping and Conflict Rules
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Memory Model  
 **Depends on:** [SPEC-005, SPEC-006]
 

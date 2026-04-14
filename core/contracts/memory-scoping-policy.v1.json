@@ -1,0 +1,65 @@
+{
+  "spec_id": "SPEC-008",
+  "policy_version": "1",
+  "single_source_of_truth": true,
+  "reused_by": {
+    "retrieval_spec": "SPEC-010",
+    "packing_spec": "SPEC-013"
+  },
+  "scope_precedence": {
+    "levels": [
+      "global",
+      "repository",
+      "branch_or_workspace",
+      "session"
+    ],
+    "resolution_order": [
+      "session",
+      "branch_or_workspace",
+      "repository",
+      "global"
+    ],
+    "notes": [
+      "Precedence is declared once in this contract and reused by retrieval and packing.",
+      "Session scope may refine durable memory but cannot silently override durable repository constraints without provenance and an explicit conflict marker."
+    ]
+  },
+  "conflict_rules": {
+    "markers": [
+      "supersedes",
+      "superseded_by",
+      "contradicts"
+    ],
+    "required_on_override_attempt": [
+      "provenance",
+      "contradicts_or_supersedes"
+    ],
+    "retrieval_resolution": {
+      "order": [
+        "drop_superseded_candidates",
+        "pair_contradictions",
+        "prefer_scope_precedence_and_recency",
+        "emit_resolution_metadata"
+      ],
+      "inject_without_treatment": false,
+      "required_resolution_metadata": [
+        "resolution_action",
+        "winning_memory_id",
+        "suppressed_memory_ids",
+        "reason"
+      ]
+    }
+  },
+  "cross_repository_isolation": {
+    "default_mode": "deny_cross_repo",
+    "repository_scope_matching": "exact_repository_id",
+    "branch_scope_matching": "exact_repository_id_and_branch_or_workspace_id",
+    "global_scope_allowed": true,
+    "fallback_on_incomplete_scope_resolution": "use_narrowest_safe_scope"
+  },
+  "invariants": [
+    "Cross-repository memory contamination is prevented by default.",
+    "Global preferences cannot erase repository-local constraints.",
+    "Contradictory durable memory cannot be injected without explicit resolution treatment."
+  ]
+}
