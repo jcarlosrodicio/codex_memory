@@ -19,12 +19,14 @@ Configuration is layered and versioned, with explicit feature modes for optional
 - Session overrides
 - Feature mode flags such as `semantic.mode = off|light|custom`
 - Budget and persistence policies
+- Install profiles such as `default`, `power-user`, and `advanced-semantic`
 
 ## Invariants and exclusions
 
 - Unknown keys must fail validation.
 - Precedence must be deterministic: session override > repo override > user default.
 - Feature toggles must expose safe defaults.
+- Default installation must map to a single safe config profile with semantic retrieval disabled.
 - Dynamic remote config loading is out of scope.
 
 ## Data flow
@@ -40,6 +42,7 @@ If an optional feature is misconfigured or unavailable, the engine must fall bac
 - The config model defines feature modes for persistence, learning, semantic retrieval, and prompt injection.
 - Precedence order is documented and reused consistently in later specs.
 - The schema includes versioning guidance for future migrations.
+- A default install profile can be documented in less than one quickstart page.
 
 ## Risks and open questions
 

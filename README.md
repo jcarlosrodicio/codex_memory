@@ -83,6 +83,59 @@ The base product must work without external services or mandatory model download
 
 Semantic retrieval is an extension point, not a requirement. The core interfaces must remain stable when semantic mode is set to `off`.
 
+## Installation target
+
+The intended installation experience is **simple in Codex app, compatible with Codex CLI, and still useful in zero-dependency mode**.
+
+Design target:
+
+- installable locally as a Codex plugin package from day one,
+- discoverable through a local Codex marketplace entry,
+- minimal manual setup for the default mode,
+- no mandatory external database or hosted service,
+- one clear local path for “works now,”
+- a future publication path for the Codex plugin marketplace,
+- and a second path for optional semantic enhancements.
+
+The repository is being designed so the first useful setup can be explained in a short quickstart:
+
+1. install the plugin locally in Codex,
+2. expose it through a local marketplace entry,
+3. enable it from Codex app or Codex CLI,
+4. point it at the local repository or workspace,
+5. keep semantic mode disabled by default,
+6. start with safe local persistence and visible audit output.
+
+The long-term goal is that a user can identify the plugin from its repository metadata and later install it from a published marketplace entry. For the first releases, the supported path is local installation through Codex's plugin system rather than direct install from a Git URL.
+
+Marketplace publication is a later distribution step, not a blocker for the core user experience.
+
+See the evolving install guidance in [`docs/installation.md`](docs/installation.md).
+
+## Metrics and observability
+
+This project is not treating “memory” as a black box. A useful release needs metrics that answer two questions:
+
+- is it actually saving prompt tokens,
+- is it preserving or improving answer quality.
+
+The current design work tracks both runtime and evaluation metrics, including:
+
+- token reduction versus baseline,
+- memory hit rate,
+- contamination across scopes,
+- contradiction rate,
+- user correction rate,
+- pack fill rate and drop reasons.
+
+The intended user-facing surfaces are:
+
+- a quick status view in Codex app,
+- CLI inspection commands for local runs,
+- and structured local audit artifacts for deeper analysis.
+
+See [`docs/metrics.md`](docs/metrics.md) and [`docs/specs/spec-018-evaluation-and-benchmark-methodology.md`](docs/specs/spec-018-evaluation-and-benchmark-methodology.md).
+
 ## Privacy and safety
 
 - Local-first persistence

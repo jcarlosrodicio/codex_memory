@@ -17,6 +17,7 @@ Every major runtime decision emits structured audit artifacts, and the CLI expos
 - Audit record schema
 - Pack inclusion and drop reasons
 - Inspection CLI commands such as `status`, `inspect-last-pack`, `inspect-session`, and `explain-atom`
+- Runtime health and metrics surfaces such as `metrics` or `status --json`
 
 ## Invariants and exclusions
 
@@ -38,6 +39,8 @@ If verbose audit mode is disabled, the system must still emit minimal explainabi
 - The audit model records why items entered or left a pack.
 - Inspection commands are defined for both humans and scripts.
 - Safety filtering applies to audit output.
+- At least one inspect surface exposes the latest token, retrieval, and safety metrics needed to diagnose plugin behavior.
+- The docs distinguish between quick user-facing metrics in Codex and deeper local audit artifacts for contributors.
 
 ## Risks and open questions
 

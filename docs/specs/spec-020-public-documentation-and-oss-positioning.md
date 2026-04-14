@@ -15,6 +15,8 @@ Documentation is treated as part of the product surface. The README and companio
 ## Public interfaces or types affected
 
 - `README.md`
+- `docs/installation.md`
+- `docs/metrics.md`
 - `docs/architecture.md`
 - `docs/security-and-privacy.md`
 - `docs/spec-roadmap.md`
@@ -25,6 +27,8 @@ Documentation is treated as part of the product surface. The README and companio
 - Public docs must describe the project as `memory engine + Codex adapter`.
 - README content must be understandable without reading internal planning docs first.
 - Documentation must state that semantic retrieval is optional.
+- Documentation must present local installation as the default first-use path until marketplace publication exists.
+- Documentation must not promise unsupported direct installation from a Git repository URL unless Codex docs explicitly support it.
 - Marketing copy unsupported by specs or benchmarks is out of scope.
 
 ## Data flow
@@ -38,6 +42,10 @@ If implementation lags behind docs, the docs must clearly label roadmap items as
 ## Acceptance criteria
 
 - The README covers problem statement, core ideas, modes of operation, safety, and roadmap.
+- Public docs define a simple-install target for Codex app users and a compatible CLI story.
+- Public docs explain local installation clearly and describe marketplace publication as a future distribution channel.
+- Public docs explain that repository metadata helps future publication and discovery, but local marketplace installation is the supported path for early releases.
+- Public docs explain which metrics prove the plugin is healthy and useful.
 - Public docs link to the spec tree and stay consistent with it.
 - The repository can be understood by a new GitHub visitor in a single reading pass.
 
