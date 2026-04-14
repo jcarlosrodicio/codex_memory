@@ -1,0 +1,134 @@
+# codex-memory
+
+`codex-memory` is a local-first memory engine for coding agents, with a first-party adapter for Codex.
+
+Its goal is simple: **reduce raw prompt context and re-inject only the memory that helps the agent perform better**. Instead of replaying entire chat histories, the system captures durable signals, compresses them into reusable memory objects, and builds a bounded context pack for each new turn.
+
+## What this is
+
+- A reusable memory core for agent workflows.
+- A Codex adapter that plugs the core into session hooks.
+- A specs-first public repository that defines how memory is captured, consolidated, retrieved, audited, and safely injected.
+
+## Why not just save all chats
+
+Saving every chat transcript is easy, but it is a poor memory strategy for an agent:
+
+- It burns tokens on repeated raw history.
+- It mixes durable preferences with one-off noise.
+- It preserves contradictions instead of resolving them.
+- It leaks context across repos, branches, and sessions.
+
+This project aims to keep what matters and drop what does not.
+
+## Core ideas
+
+### 1. Multi-level memory
+
+Memory is scoped so the engine can distinguish between:
+
+- global user preferences,
+- repository and branch-specific rules,
+- short-lived session context.
+
+### 2. Cheap-first retrieval
+
+The default path is deterministic and inexpensive:
+
+- lexical retrieval,
+- scope filters,
+- confidence and recency ranking,
+- graph expansion only when it helps.
+
+### 3. Graph-first structure, semantic search optional
+
+Relationships between memory objects are part of the core design. Semantic search is supported through an optional backend interface, but the product must remain useful when semantic mode is disabled.
+
+### 4. Token budgeting as a product feature
+
+The engine does not merely retrieve memory. It composes a `ContextPack` under a strict budget and records why each item was kept, trimmed, or rejected.
+
+## How it works
+
+1. Hooks capture signals from the active agent session.
+2. Session data is consolidated into durable memory atoms and compressed capsules.
+3. A retrieval pipeline ranks relevant memory for the next task.
+4. A bounded `ContextPack` is injected into the next prompt.
+5. Audit artifacts explain what the engine decided and why.
+
+## Repository layout
+
+This repository currently focuses on design and planning:
+
+- [`docs/specs/`](docs/specs/) — numbered implementation specs
+- [`docs/spec-roadmap.md`](docs/spec-roadmap.md) — public roadmap of the spec set
+- [`docs/architecture.md`](docs/architecture.md) — engine architecture overview
+- [`docs/security-and-privacy.md`](docs/security-and-privacy.md) — persistence and safety model
+- [`docs/plans/`](docs/plans/) — implementation sequencing and wave planning
+
+Target implementation layout described by the specs:
+
+- `core/` — reusable memory engine
+- `adapters/codex/` — Codex hook integration
+- `cli/` — inspection, replay, and maintenance commands
+- `docs/` — public and internal documentation
+
+## Modes of operation
+
+### Zero-dependency core
+
+The base product must work without external services or mandatory model downloads. This mode relies on local storage, deterministic retrieval, graph expansion, and bounded context packing.
+
+### Optional semantic backend
+
+Semantic retrieval is an extension point, not a requirement. The core interfaces must remain stable when semantic mode is set to `off`.
+
+## Privacy and safety
+
+- Local-first persistence
+- Secret redaction before storage
+- Scope-aware memory isolation
+- Explainable prompt injection
+- Explicit fallback behavior when optional capabilities are unavailable
+
+See [`docs/security-and-privacy.md`](docs/security-and-privacy.md).
+
+## License
+
+This repository is released under the MIT License. See [`LICENSE`](LICENSE).
+
+## Roadmap
+
+The first milestone is not code. It is a coherent spec set that makes the future implementation obvious and reusable.
+
+Current repository goals:
+
+- rewrite the legacy specs into a layered product architecture,
+- define measurable token-saving behavior,
+- document the public OSS story from day one,
+- prepare a clean handoff for implementation work.
+
+## Contributing and design process
+
+This repository is **specs-first**.
+
+- Product and architecture changes should start as spec changes.
+- New adapters should build on the reusable memory core.
+- New retrieval backends should implement the published backend contracts rather than changing the engine model.
+- Public documentation changes should stay aligned with the spec tree.
+
+### How to contribute
+
+1. Read the spec index in [`docs/specs/README.md`](docs/specs/README.md) and the roadmap in [`docs/spec-roadmap.md`](docs/spec-roadmap.md).
+2. If your change affects behavior, update the relevant numbered spec first or include a new spec proposal.
+3. Keep the architecture split intact: reusable engine in `core`, host-specific behavior in `adapters`, operational tooling in `cli`.
+4. Prefer small pull requests scoped to a single spec or a tightly related doc change.
+5. When introducing optional backends or adapters, document the fallback behavior and safe defaults explicitly.
+
+### Good first contributions
+
+- tighten acceptance criteria in a spec,
+- improve public docs clarity,
+- propose evaluation fixtures or benchmark methodology,
+- refine safety or scope-isolation guidance,
+- draft adapter or backend extension specs without bypassing the core model.
