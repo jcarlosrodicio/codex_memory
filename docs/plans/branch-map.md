@@ -22,6 +22,7 @@ SPEC-013 | `feat/spec-013-token-budgeting-and-context-pack-builder` | SPEC-010, 
 SPEC-014 | `feat/spec-014-capture-and-signal-extraction-pipeline` | SPEC-003, SPEC-005, SPEC-007
 SPEC-015 | `feat/spec-015-prompt-injection-and-session-controls` | SPEC-003, SPEC-013, SPEC-014
 SPEC-016 | `feat/spec-016-session-consolidation-and-learning-promotion` | SPEC-005, SPEC-006, SPEC-007, SPEC-014
+SPEC-025 | `feat/spec-025-runtime-hook-wiring-and-local-persistence-activation` | SPEC-003, SPEC-006, SPEC-007, SPEC-014, SPEC-015, SPEC-016
 SPEC-017 | `feat/spec-017-explainability-audit-trail-and-inspection-cli` | SPEC-013, SPEC-015, SPEC-016
 SPEC-018 | `feat/spec-018-evaluation-and-benchmark-methodology` | SPEC-013, SPEC-015, SPEC-016, SPEC-017
 SPEC-019 | `feat/spec-019-quality-gates-and-release-readiness` | SPEC-007, SPEC-017, SPEC-018

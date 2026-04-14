@@ -43,6 +43,17 @@ Important delivery note:
 
 These specs connect the engine to actual Codex sessions and define how memory moves from raw interaction to reusable durable knowledge.
 
+## Bridge Layer: Runtime Activation and Local Persistence
+
+- `SPEC-025` Runtime Hook Wiring and Local Persistence Activation
+
+This bridge layer turns the implemented session pipeline into an observable runtime feature by wiring real Codex hooks and local persisted artifacts before the richer audit and evaluation surfaces are considered complete.
+
+Important delivery note:
+
+- Installing the plugin and seeing it in Codex is not sufficient proof of working memory.
+- Meaningful manual local validation starts only once `SPEC-025` is implemented.
+
 ## Layer 5: Operations and Evaluation
 
 - `SPEC-017` Explainability, Audit Trail, and Inspection CLI
@@ -81,9 +92,10 @@ The future implementation should proceed in this order:
 3. zero-dependency retrieval and budgeting (`SPEC-010`, `SPEC-011`, `SPEC-013`),
 4. runtime hardening and safe degradation (`SPEC-021`),
 5. Codex session pipeline with early golden-path replay (`SPEC-014` to `SPEC-016`),
-6. explainability, metrics, evaluation, and release readiness (`SPEC-017` to `SPEC-019`),
-7. public docs and release polish (`SPEC-020`),
-8. optional semantic backend enhancement (`SPEC-012`),
-9. post-MVP operator surface (`SPEC-022` to `SPEC-024`).
+6. runtime hook wiring and observable local persistence (`SPEC-025`),
+7. explainability, metrics, evaluation, and release readiness (`SPEC-017` to `SPEC-019`),
+8. public docs and release polish (`SPEC-020`),
+9. optional semantic backend enhancement (`SPEC-012`),
+10. post-MVP operator surface (`SPEC-022` to `SPEC-024`).
 
 That order preserves architectural clarity and avoids implementing adapter behavior before the memory model is stable.

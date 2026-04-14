@@ -80,7 +80,7 @@ Success criteria:
 
 - a new user can complete setup in under 5 minutes,
 - no extra service needs to be installed,
-- the first useful memory artifact can be created in the first coding session.
+- the first useful memory artifact can be created in the first coding session once runtime activation is implemented.
 
 ### Tier 2: Power-user local path
 
@@ -175,6 +175,8 @@ Expected result:
 - Codex CLI reports that the plugin was installed.
 - Codex app shows `Codex Memory` in the plugins list after restart.
 
+This is an installation proof only. It does not, by itself, prove that live Codex sessions are invoking the adapter hooks or writing durable memory artifacts.
+
 If discovery fails, check these first:
 
 - `~/.agents/plugins/marketplace.json` exists.
@@ -183,6 +185,109 @@ If discovery fails, check these first:
 - Codex was fully restarted after adding or updating the marketplace entry.
 
 This exact flow should stay stable unless Codex changes its local plugin packaging rules.
+
+## Runtime activation note
+
+The repository now treats real live-session validation as a separate bridge concern captured by `SPEC-025`.
+
+That distinction matters:
+
+- installation means the plugin is discoverable and enabled in Codex,
+- runtime activation means Codex lifecycle hooks actually invoke the adapter,
+- observable local persistence means a user can inspect file-based memory artifacts after a real session.
+
+`SPEC-025` now wires runtime hooks and local persistence, so end-to-end live-session verification is available in local environments.
+
+## Runtime activation and persistence verification
+
+Codex runtime hook discovery uses:
+
+- `~/.codex/hooks.json` for global hooks
+- `<repo>/.codex/hooks.json` for repo-scoped hooks
+
+Recommended activation for Codex Memory across repositories:
+
+- install Codex Memory entries into `~/.codex/hooks.json`
+
+Install/update command (safe merge with existing hooks):
+
+```bash
+node ./adapters/codex/bin/install-global-hooks.mjs
+```
+
+This command preserves pre-existing user hooks and refreshes only Codex Memory hook entries.
+It also enables Codex hooks feature flag automatically in `~/.codex/config.toml` by ensuring:
+
+```toml
+[features]
+codex_hooks = true
+```
+
+Normal flow does not require manual `config.toml` editing.
+
+Repo-local fallback wiring:
+
+- `.codex/hooks.json`
+
+Quick activation sanity check:
+
+```bash
+test -f ~/.codex/hooks.json && echo "global hooks config present"
+rg -n "codex_hooks\\s*=\\s*true" ~/.codex/config.toml
+```
+
+Canonical local artifacts are persisted as NDJSON in the active store path:
+
+- `events.ndjson`
+- `atoms.ndjson`
+- `edges.ndjson`
+- `capsules.ndjson`
+
+Default store path:
+
+- `~/.codex/plugins/codex-memory/data`
+
+Optional override:
+
+- `CODEX_MEMORY_STORE_DIR=/absolute/path`
+
+Manual verification from terminal using real Codex hook events:
+
+```bash
+tmp_store="$(mktemp -d)"
+printf '%s' '{"hook_event_name":"SessionStart","session_id":"manual-install-s1","cwd":"'"$PWD"'","model":"gpt-5.4"}' | node ./adapters/codex/bin/codex-memory-hook.mjs SessionStart --store-path "$tmp_store"
+printf '%s' '{"hook_event_name":"UserPromptSubmit","session_id":"manual-install-s1","turn_id":"turn-1","cwd":"'"$PWD"'","model":"gpt-5.4","prompt":"Always run node --test before finalize"}' | node ./adapters/codex/bin/codex-memory-hook.mjs UserPromptSubmit --store-path "$tmp_store"
+printf '%s' '{"hook_event_name":"Stop","session_id":"manual-install-s1","turn_id":"turn-1","cwd":"'"$PWD"'","model":"gpt-5.4","stop_hook_active":false,"last_assistant_message":"We will run node --test first and fix failures."}' | node ./adapters/codex/bin/codex-memory-hook.mjs Stop --store-path "$tmp_store"
+ls -l "$tmp_store"
+```
+
+Expected proof:
+
+- hook commands return JSON compatible with Codex hook output,
+- canonical artifact files are present,
+- `atoms/edges/capsules` are produced when learning is enabled,
+- setting `disable_learning=true` keeps event capture but blocks durable promotion.
+
+Inspect the default persistent location used by Codex Memory:
+
+```bash
+ls -l ~/.codex/plugins/codex-memory/data
+sed -n '1,5p' ~/.codex/plugins/codex-memory/data/events.ndjson
+sed -n '1,5p' ~/.codex/plugins/codex-memory/data/atoms.ndjson
+```
+
+Cross-repo verification:
+
+1. Install plugin once in Codex.
+2. Run `node ./adapters/codex/bin/install-global-hooks.mjs`.
+3. Open Codex in a different repository.
+4. Run one short turn.
+5. Confirm artifacts update in `~/.codex/plugins/codex-memory/data/`.
+
+If installer output contains warnings, treat them as actionable:
+
+- hook warnings: installer preserved existing hooks and adjusted Codex Memory entries.
+- config warnings: installer found ambiguous `config.toml` structure and skipped unsafe edits; manual follow-up may be required.
 
 ## Manifest and metadata target
 

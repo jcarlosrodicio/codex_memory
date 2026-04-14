@@ -118,6 +118,14 @@ The long-term goal is that a user can identify the plugin from its repository me
 
 Marketplace publication is a later distribution step, not a blocker for the core user experience.
 
+Important distinction:
+
+- plugin installability means Codex can discover and enable the package,
+- runtime activation means live Codex sessions actually trigger memory hooks,
+- observable local persistence means a user can inspect durable artifacts on disk after a session.
+
+The repository now treats runtime activation and observable local persistence as a dedicated bridge step (`SPEC-025`) between the session pipeline and later audit/evaluation work.
+
 ### Local install quickstart
 
 The shortest working path today is:
@@ -171,6 +179,85 @@ Expected result:
 
 - Codex CLI reports that the plugin was installed,
 - and Codex app shows `Codex Memory` in the plugins list after restart.
+
+That is an installability proof. Runtime activation and observable local persistence are now wired by `SPEC-025`, so live-session validation should include a disk-artifact check after a real session.
+
+### Runtime activation quick check
+
+Codex discovers runtime hooks from:
+
+- `~/.codex/hooks.json` (global)
+- `<repo>/.codex/hooks.json` (repo-local)
+
+Recommended activation for real usage across multiple repos:
+
+- install Codex Memory hooks globally in `~/.codex/hooks.json`
+
+Repository-local fallback (only active when running Codex in this repo):
+
+- `.codex/hooks.json`
+
+By default, durable local artifacts are written to:
+
+- `~/.codex/plugins/codex-memory/data/events.ndjson`
+- `~/.codex/plugins/codex-memory/data/atoms.ndjson`
+- `~/.codex/plugins/codex-memory/data/edges.ndjson`
+- `~/.codex/plugins/codex-memory/data/capsules.ndjson`
+
+You can override the path with `CODEX_MEMORY_STORE_DIR`.
+
+Install or update global hooks safely (merge, non-destructive):
+
+```bash
+node ./adapters/codex/bin/install-global-hooks.mjs
+```
+
+This command does both:
+
+1. merge/update `~/.codex/hooks.json` without removing unrelated hooks.
+2. enable Codex hooks in `~/.codex/config.toml` by ensuring:
+   `[features]` + `codex_hooks = true`.
+
+If you already have `~/.codex/hooks.json` or `~/.codex/config.toml`, the installer is idempotent and preserves unrelated settings. If it detects an ambiguous TOML layout it cannot edit safely, it emits a warning instead of corrupting the file.
+
+Minimal local verification using real Codex hook events:
+
+```bash
+tmp_store="$(mktemp -d)"
+printf '%s' '{"hook_event_name":"SessionStart","session_id":"manual-s1","cwd":"'"$PWD"'","model":"gpt-5.4"}' | node ./adapters/codex/bin/codex-memory-hook.mjs SessionStart --store-path "$tmp_store"
+printf '%s' '{"hook_event_name":"UserPromptSubmit","session_id":"manual-s1","turn_id":"turn-1","cwd":"'"$PWD"'","model":"gpt-5.4","prompt":"Always run node --test before finalize"}' | node ./adapters/codex/bin/codex-memory-hook.mjs UserPromptSubmit --store-path "$tmp_store"
+printf '%s' '{"hook_event_name":"Stop","session_id":"manual-s1","turn_id":"turn-1","cwd":"'"$PWD"'","model":"gpt-5.4","stop_hook_active":false,"last_assistant_message":"We will run node --test first and fix failures."}' | node ./adapters/codex/bin/codex-memory-hook.mjs Stop --store-path "$tmp_store"
+ls -l "$tmp_store"
+```
+
+Expected result:
+
+- lifecycle hook commands return JSON compatible with Codex hook output,
+- canonical NDJSON artifacts exist in the store path,
+- `disable_learning=true` keeps events but prevents `atoms/edges/capsules` promotion.
+
+Inspect default path after a live Codex session:
+
+```bash
+ls -l ~/.codex/plugins/codex-memory/data
+sed -n '1,5p' ~/.codex/plugins/codex-memory/data/events.ndjson
+sed -n '1,5p' ~/.codex/plugins/codex-memory/data/atoms.ndjson
+```
+
+Verify global activation in any other repository:
+
+```bash
+cd /path/to/another/repo
+codex
+# run a short prompt/response turn, then inspect:
+ls -l ~/.codex/plugins/codex-memory/data
+```
+
+Verify feature flag activation:
+
+```bash
+rg -n "codex_hooks\\s*=\\s*true" ~/.codex/config.toml
+```
 
 If the plugin does not appear, check these first:
 

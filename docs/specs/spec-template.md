@@ -6,7 +6,7 @@ Use this template for every numbered spec in this repository.
 # SPEC-XXX — Title
 
 **Status:** Proposed
-**Layer:** Foundation | Memory Model | Retrieval and Packing | Codex Session Pipeline | Operations and Evaluation | Public OSS Docs
+**Layer:** Foundation | Memory Model | Retrieval and Packing | Codex Session Pipeline | Runtime Activation and Local Persistence | Operations and Evaluation | Public OSS Docs
 **Depends on:** [SPEC-AAA, SPEC-BBB]
 
 ## Product objective

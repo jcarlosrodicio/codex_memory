@@ -1,0 +1,43 @@
+{
+  "spec_id": "SPEC-014",
+  "contract_version": "1",
+  "source_events": [
+    "SESSION_STARTED",
+    "BEFORE_PROMPT",
+    "AFTER_RESPONSE",
+    "SESSION_ENDED"
+  ],
+  "candidate_signal_schema": {
+    "required_fields": [
+      "id",
+      "event_id",
+      "signal_type",
+      "atom_type",
+      "content",
+      "scope",
+      "confidence",
+      "provenance",
+      "created_at"
+    ],
+    "confidence_range": [0, 1],
+    "candidate_types": [
+      "preference",
+      "workflow",
+      "decision",
+      "constraint",
+      "bugfix",
+      "fact",
+      "open_loop"
+    ]
+  },
+  "buffering": {
+    "session_event_buffer_max": 200,
+    "session_signal_buffer_max": 80,
+    "overflow_behavior": "drop_oldest_and_record_warning"
+  },
+  "invariants": [
+    "Raw capture does not imply durable persistence.",
+    "Extraction emits provenance and confidence metadata.",
+    "Low-confidence signals remain ephemeral by default."
+  ]
+}

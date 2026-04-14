@@ -79,13 +79,22 @@ graph expansion + strict-budget context packing, with semantic mode optional and
 
 ## Runtime modules (zero-deps)
 
-`core/src/` now contains the host-agnostic runtime modules for Layer 3:
+`core/src/` now contains the host-agnostic runtime modules for Layer 3 and Layer 4:
 
 - `LexicalRetrievalEngine`
 - `GraphExpansionPolicy`
 - `ContextPackBuilder`
 - `RetrievalEngine` orchestration
 - optional `SemanticBackend` interface + fallback helpers
+- `SessionPipelineCore` capture/extract/injection orchestration
+- `SessionEventNormalizer` for normalized `MemoryEvent` conversion
+- `SessionSignalExtractor` deterministic signal extraction
+- `SessionConsolidator` session-end durable promotion
+- `SecretRedactionGate` mandatory pre-promotion safety gate
+- `LocalMemoryStore` local-first canonical NDJSON persistence + secondary indexes
+
+Default persistence root for `LocalMemoryStore` is `~/.codex/plugins/codex-memory/data`
+(override with `CODEX_MEMORY_STORE_DIR`).
 
 ## Boundary rules
 

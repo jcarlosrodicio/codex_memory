@@ -32,7 +32,7 @@ Required proof:
 
 Required proof:
 
-- end-to-end proof for capture and persistence
+- memory-model and store-contract proof
 - scope isolation proof across at least two repos
 
 ### Milestone C: Useful Zero-Dependency Retrieval
@@ -57,23 +57,40 @@ Required proof:
 - throttling or loop-guard proof
 - degraded `session_end` proof
 
-### Milestone E: Explainability, Metrics, and Release Proof
+### Milestone E: Codex Session Pipeline
 
 - `SPEC-014` Capture and Signal Extraction Pipeline
 - `SPEC-015` Prompt Injection and Session Controls
 - `SPEC-016` Session Consolidation and Learning Promotion
+
+Required proof:
+
+- golden-path replay proof
+- session pipeline proof in tests
+
+### Milestone F: Runtime Activation and Local Validation
+
+- `SPEC-025` Runtime Hook Wiring and Local Persistence Activation
+
+Required proof:
+
+- live Codex runtime hook proof
+- local persistence proof
+- manual local verification proof
+
+### Milestone G: Explainability, Metrics, and Release Proof
+
 - `SPEC-017` Explainability, Audit Trail, and Inspection CLI
 - `SPEC-018` Evaluation and Benchmark Methodology
 - `SPEC-019` Quality Gates and Release Readiness
 
 Required proof:
 
-- golden-path replay proof
 - metrics proof
 - safety proof
 - release proof
 
-### Milestone F: Public Surface
+### Milestone H: Public Surface
 
 - `SPEC-020` Public Documentation and OSS Positioning
 
@@ -122,11 +139,15 @@ Required proof:
 
 ### Wave 8
 
+- `SPEC-025` Runtime Hook Wiring and Local Persistence Activation
+
+### Wave 9
+
 - `SPEC-017` Explainability, Audit Trail, and Inspection CLI
 - `SPEC-018` Evaluation and Benchmark Methodology
 - `SPEC-019` Quality Gates and Release Readiness
 
-### Wave 9
+### Wave 10
 
 - `SPEC-020` Public Documentation and OSS Positioning
 
@@ -141,7 +162,7 @@ Required proof:
 
 - Agent A: frozen foundation and install path stewardship (`SPEC-001` to `SPEC-004`)
 - Agent B: memory model and zero-dependency retrieval (`SPEC-005` to `SPEC-013`, excluding post-MVP `SPEC-012`)
-- Agent C: runtime hardening and Codex lifecycle (`SPEC-014` to `SPEC-017`, plus `SPEC-021`)
+- Agent C: runtime hardening, Codex lifecycle, and runtime activation (`SPEC-014` to `SPEC-017`, plus `SPEC-021` and `SPEC-025`)
 - Agent D: evaluation, quality, public docs, and post-MVP operator surface (`SPEC-018` to `SPEC-020`, plus `SPEC-022` to `SPEC-024` and later `SPEC-012`)
 
 ## Demo gates

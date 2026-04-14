@@ -17,6 +17,7 @@ This runbook assumes the rewritten spec tree is the source of truth.
 - Public docs changes should follow the product behavior they document, not lead it.
 - `SPEC-001` to `SPEC-004` are treated as frozen during the current implementation-plan improvement cycle.
 - Golden-path replay evidence should start appearing no later than the Codex session pipeline stage.
+- Meaningful manual local validation of live Codex sessions should not be claimed before `SPEC-025` is closed.
 
 ## Required PR evidence
 

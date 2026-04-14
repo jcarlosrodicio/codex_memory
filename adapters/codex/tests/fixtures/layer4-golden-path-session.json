@@ -1,0 +1,48 @@
+{
+  "session_start": {
+    "session_id": "golden-s1",
+    "started_at": "2026-04-14T10:00:00.000Z",
+    "runtime": {
+      "surface": "cli",
+      "version": "1.0.0"
+    },
+    "workspace": {
+      "root_path": "/workspace/repo-a",
+      "repository": "repo-a",
+      "branch": "feat/layer4"
+    },
+    "controls": {
+      "disable_injection": false,
+      "disable_learning": false
+    }
+  },
+  "before_prompt": {
+    "session_id": "golden-s1",
+    "prompt_id": "p-1",
+    "prompt_text": "Please prefer deterministic tests and keep semantic mode off by default. Must run node test before finalize.",
+    "user_visible_controls": {
+      "disable_injection": false,
+      "disable_learning": false
+    },
+    "budget_hint": {
+      "max_tokens_for_memory": 80
+    }
+  },
+  "after_response": {
+    "session_id": "golden-s1",
+    "prompt_id": "p-1",
+    "assistant_response": "We decided to fix the flaky test and run node test before final response.",
+    "response_stats": {
+      "input_tokens": 300,
+      "output_tokens": 180
+    },
+    "controls": {
+      "disable_learning": false
+    }
+  },
+  "session_end": {
+    "session_id": "golden-s1",
+    "ended_at": "2026-04-14T10:04:00.000Z",
+    "reason": "completed"
+  }
+}

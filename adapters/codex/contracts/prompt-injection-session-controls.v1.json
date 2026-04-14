@@ -1,0 +1,38 @@
+{
+  "spec_id": "SPEC-015",
+  "contract_version": "1",
+  "injection_payload": {
+    "inject_context": "boolean",
+    "context_pack": {
+      "pack_id": "string",
+      "content": "string",
+      "token_estimate": "number"
+    },
+    "decision_summary": {
+      "reason": "string",
+      "audit_ref": "string|null"
+    },
+    "injection_metadata": {
+      "disabled_by_control": "boolean",
+      "pack_item_count": "number",
+      "token_estimate": "number"
+    }
+  },
+  "session_controls": {
+    "disable_injection": {
+      "effect": "skip_context_injection_keep_capture_and_learning"
+    },
+    "disable_learning": {
+      "effect": "allow_injection_but_skip_durable_promotion"
+    }
+  },
+  "fallback_behavior": {
+    "pack_generation_failure": "inject_context_false_with_reason",
+    "injection_disabled": "inject_context_false_with_reason"
+  },
+  "invariants": [
+    "Adapter never mutates ContextPack semantics owned by core.",
+    "Injection failures are observable and non-fatal.",
+    "Controls can disable injection and learning independently."
+  ]
+}

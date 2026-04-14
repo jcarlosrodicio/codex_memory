@@ -46,6 +46,10 @@ Template: [`spec-template.md`](./spec-template.md)
 - `SPEC-015` [Prompt Injection and Session Controls](./spec-015-prompt-injection-and-session-controls.md)
 - `SPEC-016` [Session Consolidation and Learning Promotion](./spec-016-session-consolidation-and-learning-promotion.md)
 
+## Runtime Activation and Local Persistence
+
+- `SPEC-025` [Runtime Hook Wiring and Local Persistence Activation](./spec-025-runtime-hook-wiring-and-local-persistence-activation.md)
+
 ## Operations and Evaluation
 
 - `SPEC-017` [Explainability, Audit Trail, and Inspection CLI](./spec-017-explainability-audit-trail-and-inspection-cli.md)
@@ -68,3 +72,5 @@ Token-saving effectiveness and quality impact measurement are defined in `SPEC-0
 ## Sequencing
 
 Implementation sequencing is documented in [`../plans/multiagent-waves.md`](../plans/multiagent-waves.md). Public framing is summarized in [`../spec-roadmap.md`](../spec-roadmap.md).
+
+Meaningful local validation of live Codex sessions depends on `SPEC-025`; installing the plugin alone is not yet proof that runtime hooks and durable persistence are active.

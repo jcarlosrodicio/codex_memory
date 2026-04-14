@@ -1,0 +1,35 @@
+{
+  "spec_id": "SPEC-016",
+  "contract_version": "1",
+  "promotion_policy": {
+    "phase": "session_end_default",
+    "min_promotion_confidence": 0.68,
+    "requires_redaction_gate": true,
+    "blocked_secret_behavior": "drop_candidate"
+  },
+  "durable_outputs": {
+    "atoms": "optional_many",
+    "edges": "optional_many",
+    "capsule": "optional_one"
+  },
+  "deduplication": {
+    "candidate_signature": "scope + atom_type + normalized_content",
+    "existing_atom_behavior": "increment_reuse_and_skip_new_atom"
+  },
+  "conflict_markers": {
+    "supports": [
+      "supersedes",
+      "contradicts"
+    ],
+    "required_provenance_on_promotion": true
+  },
+  "fallback_behavior": {
+    "learning_disabled": "no_durable_promotion",
+    "uncertain_or_low_confidence": "keep_ephemeral_or_drop"
+  },
+  "invariants": [
+    "Not every captured signal is promoted.",
+    "Promotion preserves scope, provenance, and confidence.",
+    "Consolidation must not contaminate other repositories or branches."
+  ]
+}
