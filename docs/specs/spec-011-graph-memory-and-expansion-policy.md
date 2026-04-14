@@ -23,6 +23,7 @@ Graph relations are first-class and typed. Retrieval can expand from a strong le
 - Graph expansion starts from already-ranked seeds.
 - Expansion cannot bypass scope rules.
 - Contradictory or superseded edges must affect selection decisions.
+- Graph support is part of the zero-dependency MVP, not a later optional add-on.
 - General-purpose graph analytics are out of scope.
 
 ## Data flow
@@ -39,6 +40,7 @@ If graph indexes are absent or disabled, retrieval falls back to lexical-only be
 - Expansion depth and breadth limits are defined.
 - The spec explains how graph candidates are marked and scored.
 - Graph expansion never broadens scope beyond the active memory rules.
+- The graph path is implementable without introducing mandatory external infrastructure.
 
 ## Risks and open questions
 

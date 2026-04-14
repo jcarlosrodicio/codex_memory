@@ -25,6 +25,7 @@ Evaluation is based on replayable session fixtures and comparative benchmarks ra
 - Fixtures must be anonymized or synthetic unless explicitly cleared.
 - Metrics must include both efficiency and correctness dimensions.
 - Release metrics must be understandable both to maintainers and end users inspecting local behavior.
+- The zero-dependency path must be benchmarked and judged on its own before optional semantic improvements are used to justify the product.
 - Live production telemetry collection is out of scope for v1.
 
 ## Data flow
@@ -41,6 +42,7 @@ If semantic mode is unavailable, benchmark suites must still run in lexical-only
 - The methodology compares at least baseline, cheap-first, and cheap-first-plus-semantic modes.
 - Token savings and memory quality are both first-class outputs.
 - The spec distinguishes benchmark metrics from local runtime health metrics and defines both sets.
+- The benchmark plan makes it possible to declare the zero-dependency MVP successful before the semantic backend exists.
 
 ## Risks and open questions
 

@@ -46,6 +46,11 @@ The repository adopts a **cheap-first** retrieval model:
 
 This keeps the default path predictable, fast, and dependency-light while still leaving room for more capable semantic retrieval.
 
+Implementation priority matters:
+
+- lexical retrieval and graph expansion are part of the zero-dependency core,
+- semantic retrieval is intentionally deferred until after the base product is working, measurable, and easy to install.
+
 ## Why graph is core
 
 A memory engine is not only a search index. It must understand relationships such as:
@@ -66,6 +71,8 @@ Semantic retrieval can improve recall, but it is not required to deliver value i
 - it should not block basic functionality in a public reusable repository.
 
 For that reason, semantic search is modeled as a backend contract with an `off` mode that remains fully supported.
+
+The design includes the semantic interface now so later work has a clean extension point, but the first public implementation should prove the value of the zero-dependency path before adding this optional layer.
 
 ## Design constraints
 

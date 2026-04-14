@@ -16,6 +16,8 @@ Semantic retrieval is modeled as a pluggable backend interface with explicit mod
 - `light`
 - `custom`
 
+This interface is defined early for architectural clarity, but its implementation is intentionally deferred until after the zero-dependency MVP is complete.
+
 ## Public interfaces or types affected
 
 - `SemanticBackend`
@@ -26,6 +28,7 @@ Semantic retrieval is modeled as a pluggable backend interface with explicit mod
 ## Invariants and exclusions
 
 - The core product must remain functional in `off` mode.
+- The first public MVP must be shippable without implementing this spec.
 - Semantic backend results must still obey scope and safety rules.
 - The interface cannot assume a specific vector database implementation.
 - Bundled model procurement and installation UX are out of scope for this spec.
@@ -43,8 +46,10 @@ If the backend is disabled, missing, unhealthy, or unsupported on the current ma
 - The semantic contract defines indexing, search, and health semantics.
 - The spec names the supported feature modes and what they mean.
 - A missing backend does not change the core retrieval API.
+- The spec is written so it can be implemented after the zero-dependency release without redesigning core retrieval contracts.
 
 ## Risks and open questions
 
 - “Light” mode will need a future concrete implementation choice.
 - Candidate score normalization may require replay data before it can be finalized.
+- Implementing semantic retrieval too early could delay validation of the simpler product that most users will install first.

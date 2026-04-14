@@ -22,6 +22,7 @@ Quality is enforced through explicit gates tied to safety, determinism, explaina
 
 - Safety and audit coverage are release blockers.
 - Zero-dependency mode must be part of the release gate.
+- The first public release must not depend on semantic backend readiness.
 - Public docs cannot claim support for behaviors not covered by benchmarks.
 - Hosted SaaS operations are out of scope.
 
@@ -38,6 +39,7 @@ If optional semantic features are not release-ready, the project may still ship 
 - The spec lists required test layers and release evidence.
 - Benchmark and audit requirements are explicit.
 - Zero-dependency mode has first-class release coverage.
+- Release gates explicitly allow shipping the graph-enabled zero-dependency MVP before optional semantic retrieval is implemented.
 
 ## Risks and open questions
 

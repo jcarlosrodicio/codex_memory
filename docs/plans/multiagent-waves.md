@@ -36,7 +36,6 @@ Updated: 2026-04-14
 ### Wave 5
 
 - `SPEC-011` Graph Memory and Expansion Policy
-- `SPEC-012` Semantic Backend Interface
 - `SPEC-013` Token Budgeting and Context Pack Builder
 
 ### Wave 6
@@ -58,12 +57,16 @@ Updated: 2026-04-14
 
 - `SPEC-020` Public Documentation and OSS Positioning
 
+### Post-MVP Enhancement
+
+- `SPEC-012` Semantic Backend Interface
+
 ## Suggested ownership split
 
 - Agent A: foundation and config (`SPEC-001` to `SPEC-004`)
-- Agent B: core memory model and retrieval (`SPEC-005` to `SPEC-013`)
+- Agent B: core memory model and zero-dependency retrieval (`SPEC-005` to `SPEC-013`, excluding post-MVP `SPEC-012`)
 - Agent C: Codex lifecycle and explainability (`SPEC-014` to `SPEC-017`)
-- Agent D: evaluation, quality, and public docs (`SPEC-018` to `SPEC-020`)
+- Agent D: evaluation, quality, public docs, and later semantic enhancement (`SPEC-018` to `SPEC-020`, plus post-MVP `SPEC-012`)
 
 ## Prompt template
 

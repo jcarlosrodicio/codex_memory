@@ -42,7 +42,7 @@ The default path is deterministic and inexpensive:
 
 ### 3. Graph-first structure, semantic search optional
 
-Relationships between memory objects are part of the core design. Semantic search is supported through an optional backend interface, but the product must remain useful when semantic mode is disabled.
+Relationships between memory objects are part of the core design and belong in the first release. Semantic search is supported through an optional backend interface, but the product must remain useful when semantic mode is disabled and the first public milestone should ship without requiring a semantic backend.
 
 ### 4. Token budgeting as a product feature
 
@@ -81,7 +81,7 @@ The base product must work without external services or mandatory model download
 
 ### Optional semantic backend
 
-Semantic retrieval is an extension point, not a requirement. The core interfaces must remain stable when semantic mode is set to `off`.
+Semantic retrieval is an extension point, not a requirement. The core interfaces must remain stable when semantic mode is set to `off`, and the semantic backend is planned as a post-MVP enhancement after the zero-dependency foundation is validated.
 
 ## Installation target
 
@@ -158,6 +158,7 @@ Current repository goals:
 
 - rewrite the legacy specs into a layered product architecture,
 - define measurable token-saving behavior,
+- land a strong zero-dependency MVP before optional semantic enhancements,
 - document the public OSS story from day one,
 - prepare a clean handoff for implementation work.
 

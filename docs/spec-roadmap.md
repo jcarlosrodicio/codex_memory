@@ -30,6 +30,11 @@ These specs turn “memory” into a concrete model with durable objects, storag
 
 This layer defines how the engine decides what memory is relevant and how it fits within a strict prompt budget.
 
+Important delivery note:
+
+- `SPEC-010`, `SPEC-011`, and `SPEC-013` define the zero-dependency retrieval MVP.
+- `SPEC-012` should be designed now but can be implemented after the first useful zero-dependency release.
+
 ## Layer 4: Codex Session Pipeline
 
 - `SPEC-014` Capture and Signal Extraction Pipeline
@@ -58,9 +63,10 @@ The future implementation should proceed in this order:
 
 1. foundation contracts,
 2. memory model,
-3. retrieval and budgeting,
+3. zero-dependency retrieval and budgeting,
 4. Codex integration,
-5. audit and evaluation,
-6. public docs and release polish.
+5. audit, evaluation, and release readiness for the zero-dependency MVP,
+6. public docs and release polish,
+7. optional semantic backend enhancement.
 
 That order preserves architectural clarity and avoids implementing adapter behavior before the memory model is stable.
