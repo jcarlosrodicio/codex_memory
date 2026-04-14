@@ -1,6 +1,6 @@
 # SPEC-009 — Repository and Branch Scope Resolution
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Memory Model  
 **Depends on:** [SPEC-003, SPEC-008]
 
@@ -43,3 +43,8 @@ If repository metadata is unavailable, the system falls back to a local workspac
 
 - Worktrees and nested repos may need additional normalization rules.
 - Branch names alone may be too volatile unless paired with repository identity.
+
+## Implementation notes
+
+- Repository and branch scope resolution contract: `core/contracts/repository-branch-scope-resolution.v1.json`
+- Acceptance verification tests: `core/tests/spec-009-scope-resolution-contracts.test.mjs`

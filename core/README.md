@@ -55,6 +55,15 @@ This contract defines scope precedence, contradiction and supersession handling,
 cross-repository isolation defaults, and the safe fallback to the narrowest scope
 when scope resolution is incomplete.
 
+## Repository and branch scope resolution contract
+
+`core` publishes the v1 repository/branch scope resolution contract at
+[`contracts/repository-branch-scope-resolution.v1.json`](./contracts/repository-branch-scope-resolution.v1.json).
+
+This contract defines deterministic local identity derivation from adapter hints,
+filesystem context, and local VCS metadata, plus explicit non-Git fallback and
+stable scope key formats reused by storage, retrieval, and audit surfaces.
+
 ## Boundary rules
 
 - Do not import or depend on Codex runtime types here.

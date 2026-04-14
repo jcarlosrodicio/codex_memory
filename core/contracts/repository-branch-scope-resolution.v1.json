@@ -1,0 +1,68 @@
+{
+  "spec_id": "SPEC-009",
+  "version": "1.0.0",
+  "resolver": {
+    "name": "RepositoryBranchScopeResolver",
+    "local_only": true,
+    "network_calls_allowed": false,
+    "repository_identity": {
+      "source_priority": [
+        "adapter_scope_hints.repo",
+        "git.toplevel_path",
+        "workspace.root_path"
+      ],
+      "normalization": [
+        "trim",
+        "normalize_path_separators",
+        "normalize_case_for_case_insensitive_filesystems"
+      ],
+      "identity_rule": "derive_repository_id_from_normalized_local_source"
+    },
+    "branch_or_workspace_identity": {
+      "source_priority": [
+        "adapter_scope_hints.branch",
+        "git.branch_name",
+        "workspace.local_workspace_id"
+      ],
+      "detached_head_policy": "use_workspace_local_workspace_id",
+      "normalization": [
+        "trim",
+        "preserve_branch_name_bytes",
+        "fallback_to_workspace_when_not_available"
+      ],
+      "identity_rule": "derive_branch_or_workspace_id_from_normalized_local_source"
+    }
+  },
+  "stable_scope_key_format": {
+    "repository_scope": "repo::<repository_id>",
+    "branch_or_workspace_scope": "repo::<repository_id>::branch_or_workspace::<branch_or_workspace_id>",
+    "local_workspace_scope": "workspace::<workspace_id>",
+    "key_properties": [
+      "reproducible_across_sessions",
+      "stable_without_remote_metadata",
+      "usable_as_exact_match_filter"
+    ]
+  },
+  "fallback_behavior": {
+    "when_git_metadata_unavailable": {
+      "mode": "local_workspace_scope",
+      "promote_to_global": false,
+      "sharing_mode": "reduced_to_local_workspace"
+    },
+    "when_scope_resolution_incomplete": {
+      "safe_default": "use_narrowest_safe_scope",
+      "broaden_scope": false
+    }
+  },
+  "invariants": [
+    "Scope keys are reproducible across sessions for the same workspace context.",
+    "A non-Git workspace still receives a stable local scope key.",
+    "Repository and branch scope resolution cannot depend on remote network calls.",
+    "Multi-repository workspace federation is out of scope for v1."
+  ],
+  "reused_by": {
+    "memory_store": "SPEC-006",
+    "retrieval": "SPEC-010",
+    "audit_tooling": "SPEC-017"
+  }
+}
