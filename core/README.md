@@ -19,6 +19,15 @@ This package owns memory-domain behavior and remains host-agnostic.
 
 This preserves a strict rule: adapters normalize host payloads first, then cross into core using host-agnostic event fields.
 
+## Canonical memory model contract
+
+`core` publishes the v1 canonical memory object model at
+[`contracts/memory-model.canonical.v1.json`](./contracts/memory-model.canonical.v1.json).
+
+This contract defines the five canonical objects (`MemoryEvent`, `MemoryAtom`,
+`MemoryEdge`, `MemoryCapsule`, `ContextPack`) including required versus
+optional fields and the fixed v1 `MemoryAtom` taxonomy.
+
 ## Boundary rules
 
 - Do not import or depend on Codex runtime types here.

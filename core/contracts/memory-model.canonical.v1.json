@@ -1,0 +1,130 @@
+{
+  "spec_id": "SPEC-005",
+  "schema_version": "1",
+  "canonical_objects": {
+    "MemoryEvent": {
+      "purpose": "Raw normalized session signal before consolidation.",
+      "boundary": "Raw event input only. Not canonical durable memory by itself.",
+      "durable": false,
+      "required_fields": [
+        "id",
+        "scope",
+        "provenance",
+        "event_type",
+        "occurred_at"
+      ],
+      "optional_fields": [
+        "confidence",
+        "payload",
+        "source_refs",
+        "captured_at"
+      ]
+    },
+    "MemoryAtom": {
+      "purpose": "Smallest durable reusable memory unit.",
+      "boundary": "Canonical durable unit used by retrieval and later consolidation.",
+      "durable": true,
+      "required_fields": [
+        "id",
+        "scope",
+        "provenance",
+        "atom_type",
+        "content",
+        "confidence",
+        "created_at"
+      ],
+      "optional_fields": [
+        "updated_at",
+        "supersedes",
+        "superseded_by",
+        "expires_at",
+        "tags",
+        "source_event_ids"
+      ]
+    },
+    "MemoryEdge": {
+      "purpose": "Typed relationship between two canonical memory objects.",
+      "boundary": "Directional graph relation that links source and target memory ids.",
+      "directional": true,
+      "required_fields": [
+        "id",
+        "scope",
+        "provenance",
+        "edge_type",
+        "from_memory_id",
+        "to_memory_id",
+        "created_at"
+      ],
+      "optional_fields": [
+        "confidence",
+        "weight",
+        "reason",
+        "source_event_ids"
+      ]
+    },
+    "MemoryCapsule": {
+      "purpose": "Compressed scope-aware summary derived from canonical memory.",
+      "boundary": "Compression artifact for retrieval and packing; not a raw transcript blob.",
+      "compressed": true,
+      "required_fields": [
+        "id",
+        "scope",
+        "provenance",
+        "summary",
+        "source_memory_ids",
+        "created_at"
+      ],
+      "optional_fields": [
+        "confidence",
+        "valid_from",
+        "valid_until",
+        "compression_method",
+        "token_estimate"
+      ]
+    },
+    "ContextPack": {
+      "purpose": "Bounded explainable payload assembled for prompt injection.",
+      "boundary": "Ephemeral output artifact for the current turn only.",
+      "ephemeral": true,
+      "bounded": true,
+      "explainable": true,
+      "required_fields": [
+        "id",
+        "scope",
+        "provenance",
+        "pack_items",
+        "token_budget",
+        "token_estimate",
+        "created_at"
+      ],
+      "optional_fields": [
+        "drop_reasons",
+        "trim_actions",
+        "decision_summary",
+        "expires_at"
+      ]
+    }
+  },
+  "memory_atom_type_taxonomy_v1": [
+    "preference",
+    "workflow",
+    "decision",
+    "constraint",
+    "bugfix",
+    "fact",
+    "artifact",
+    "open_loop"
+  ],
+  "shared_field_notes": {
+    "id": "Stable object identifier.",
+    "scope": "Scope identifier payload (for example global, repository, branch, or session scope).",
+    "provenance": "Origin metadata describing producer, source context, and evidence refs.",
+    "confidence": "Optional confidence score unless required by the object contract.",
+    "supersession": "Supersession metadata is represented with supersedes/superseded_by when applicable."
+  },
+  "invariants": [
+    "Free-form transcript blobs are not canonical durable memory objects.",
+    "Objects stay valid when optional metadata is absent.",
+    "Identity, scope, and provenance are required on every canonical object."
+  ]
+}

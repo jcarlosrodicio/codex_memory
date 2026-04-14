@@ -1,6 +1,6 @@
 # SPEC-005 — Canonical Memory Data Model
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Memory Model  
 **Depends on:** [SPEC-001, SPEC-002]
 
