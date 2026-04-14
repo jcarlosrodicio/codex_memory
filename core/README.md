@@ -37,6 +37,15 @@ This contract names canonical persisted artifacts for events, atoms, edges, and
 capsules, declares indexes as secondary read accelerators, and makes schema
 versioning plus migration hooks explicit.
 
+## Secret redaction and safe persistence contract
+
+`core` publishes the v1 redaction/safety gate contract at
+[`contracts/secret-redaction-policy.v1.json`](./contracts/secret-redaction-policy.v1.json).
+
+This contract defines mandatory pre-write redaction gates, explicit persistence
+outcomes (`allow`, `redact`, `block`), minimum detection coverage classes, and
+safe fallback behavior when classification certainty or optional backends fail.
+
 ## Boundary rules
 
 - Do not import or depend on Codex runtime types here.
