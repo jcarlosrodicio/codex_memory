@@ -1,0 +1,52 @@
+{
+  "spec_id": "SPEC-012",
+  "contract_version": "1",
+  "modes": {
+    "enum": ["off", "light", "custom"],
+    "default": "off",
+    "behavior": {
+      "off": "semantic_pipeline_disabled",
+      "light": "optional_local_or_embedded_backend",
+      "custom": "user_provided_backend_adapter"
+    }
+  },
+  "semantic_backend_interface": {
+    "name": "SemanticBackend",
+    "required_methods": [
+      "getCapabilities()",
+      "healthCheck()",
+      "index(memory_objects)",
+      "search(query_payload)"
+    ],
+    "search_response": {
+      "required_fields": ["memory_id", "score"],
+      "optional_fields": ["backend", "metadata"]
+    },
+    "health_response": {
+      "required_fields": ["healthy"],
+      "optional_fields": ["reason", "capabilities"]
+    }
+  },
+  "merge_contract": {
+    "pipeline_order": ["lexical", "graph", "semantic_merge", "context_pack"],
+    "scope_rules_source": "SPEC-008",
+    "missing_backend_changes_api": false
+  },
+  "fallback_behavior": {
+    "mode_off": "skip_semantic",
+    "backend_missing": "degraded_lexical_graph_only",
+    "backend_unhealthy": "degraded_lexical_graph_only",
+    "backend_error": "degraded_lexical_graph_only"
+  },
+  "status": "scaffolding_for_mvp_zero_deps",
+  "deferred_post_mvp": [
+    "Concrete light-mode backend implementation",
+    "Any mandatory vector storage integration",
+    "Model download/procurement UX"
+  ],
+  "invariants": [
+    "Core retrieval remains fully functional when semantic mode is off.",
+    "Semantic backend is optional and cannot become an MVP runtime dependency.",
+    "Semantic candidates obey the same scope and safety constraints as lexical and graph candidates."
+  ]
+}

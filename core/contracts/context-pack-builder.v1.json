@@ -1,0 +1,50 @@
+{
+  "spec_id": "SPEC-013",
+  "contract_version": "1",
+  "context_pack_schema_version": "1",
+  "hard_budget": {
+    "default_max_tokens": 600,
+    "enforcement": "hard_ceiling",
+    "overflow_allowed": false
+  },
+  "section_allocation_strategy": {
+    "rules": 0.35,
+    "knowledge": 0.35,
+    "open_loops": 0.2,
+    "capsules": 0.1,
+    "selection_order": "score_desc_then_memory_id_asc"
+  },
+  "deterministic_trimming_rules": {
+    "trim_action": "truncate_to_available_tokens",
+    "min_tokens_after_trim": 12,
+    "drop_when_cannot_fit": true,
+    "drop_reason_codes": [
+      "section_budget_exhausted",
+      "insufficient_room_after_trim",
+      "trimmed_below_minimum"
+    ]
+  },
+  "explainability": {
+    "item_why_included": true,
+    "drop_reasons": true,
+    "trim_actions": true,
+    "decision_summary": true
+  },
+  "operational_metrics": [
+    "pack_tokens",
+    "retrieved_count",
+    "dropped_count",
+    "token_savings_estimate",
+    "memory_enabled",
+    "semantic_mode"
+  ],
+  "fallback_behavior": {
+    "semantic_candidates_absent": "build_pack_from_lexical_and_graph_candidates",
+    "memory_disabled": "emit_empty_pack_with_metrics"
+  },
+  "invariants": [
+    "ContextPack is versioned and auditable.",
+    "Token budget is strict and deterministic.",
+    "Contradictions and superseded candidates must be treated before injection."
+  ]
+}

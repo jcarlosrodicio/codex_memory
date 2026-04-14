@@ -64,6 +64,29 @@ This contract defines deterministic local identity derivation from adapter hints
 filesystem context, and local VCS metadata, plus explicit non-Git fallback and
 stable scope key formats reused by storage, retrieval, and audit surfaces.
 
+## Retrieval and packing contracts
+
+`core` publishes Layer 3 retrieval and packing contracts at:
+
+- [`contracts/lexical-retrieval-engine.v1.json`](./contracts/lexical-retrieval-engine.v1.json) (`SPEC-010`)
+- [`contracts/graph-expansion-policy.v1.json`](./contracts/graph-expansion-policy.v1.json) (`SPEC-011`)
+- [`contracts/semantic-backend-interface.v1.json`](./contracts/semantic-backend-interface.v1.json) (`SPEC-012` scaffolding)
+- [`contracts/context-pack-builder.v1.json`](./contracts/context-pack-builder.v1.json) (`SPEC-013`)
+
+These contracts preserve a zero-dependency default path: lexical retrieval +
+graph expansion + strict-budget context packing, with semantic mode optional and
+`off` by default.
+
+## Runtime modules (zero-deps)
+
+`core/src/` now contains the host-agnostic runtime modules for Layer 3:
+
+- `LexicalRetrievalEngine`
+- `GraphExpansionPolicy`
+- `ContextPackBuilder`
+- `RetrievalEngine` orchestration
+- optional `SemanticBackend` interface + fallback helpers
+
 ## Boundary rules
 
 - Do not import or depend on Codex runtime types here.

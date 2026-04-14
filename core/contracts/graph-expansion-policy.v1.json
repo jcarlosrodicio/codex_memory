@@ -1,0 +1,58 @@
+{
+  "spec_id": "SPEC-011",
+  "policy_version": "1",
+  "edge_taxonomy_v1": [
+    "derived_from",
+    "applies_to",
+    "related_to",
+    "caused_by",
+    "contradicts",
+    "supersedes"
+  ],
+  "expansion_policy": {
+    "starts_from": "lexical_ranked_seeds",
+    "seed_limit": 8,
+    "max_depth": 2,
+    "max_breadth_per_seed": 3,
+    "max_expanded_candidates": 24,
+    "depth_decay": 0.8,
+    "scoring": {
+      "graph_bonus_formula": "seed_score * edge_weight(edge_type) * depth_decay^depth",
+      "edge_weights": {
+        "derived_from": 0.18,
+        "applies_to": 0.22,
+        "related_to": 0.12,
+        "caused_by": 0.2,
+        "contradicts": 0.05,
+        "supersedes": 0.05
+      }
+    }
+  },
+  "scope_guardrails": {
+    "scope_rules_source": "SPEC-008",
+    "can_broaden_scope": false,
+    "on_scope_mismatch": "drop_candidate_with_reason"
+  },
+  "conflict_resolution": {
+    "order": [
+      "drop_superseded_candidates",
+      "pair_contradictions",
+      "prefer_scope_precedence_and_recency",
+      "emit_resolution_metadata"
+    ],
+    "required_resolution_metadata": [
+      "resolution_action",
+      "winning_memory_id",
+      "suppressed_memory_ids",
+      "reason"
+    ]
+  },
+  "fallback_behavior": {
+    "on_graph_index_unavailable": "lexical_only_same_contract"
+  },
+  "invariants": [
+    "Graph expansion starts from lexical hits and never bypasses scope isolation.",
+    "Expansion is bounded by explicit depth and breadth limits.",
+    "Graph path remains zero-dependency and local-first."
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "spec_id": "SPEC-010",
+  "retrieval_contract_version": "1",
+  "host_agnostic_interface": {
+    "engine": "RetrievalEngine",
+    "entrypoint": "retrieve(task_context, options)",
+    "default_stage": "lexical",
+    "inputs": {
+      "task_context": ["text", "prompt", "hints"],
+      "options": ["scope", "memory_store", "filters", "budget"]
+    },
+    "outputs": ["ranked_candidates", "dropped_candidates", "metrics"]
+  },
+  "candidate_filtering": {
+    "scope_filter": "mandatory_exact_scope_compatibility",
+    "memory_type_filter": ["atom", "capsule"],
+    "atom_type_filter": "optional_allowlist",
+    "tag_filter": "optional_intersection",
+    "freshness_filter": {
+      "type": "optional_time_window",
+      "input": "filters.freshness.max_age_days",
+      "timestamp_field": "updated_at_or_created_at",
+      "unit": "days",
+      "on_stale": "drop_candidate_with_reason_filtered_by_freshness",
+      "on_missing_or_invalid_timestamp": "drop_candidate_with_reason_filtered_by_freshness_missing_timestamp"
+    }
+  },
+  "ranking": {
+    "deterministic": true,
+    "weights": {
+      "lexical": 0.55,
+      "scope": 0.15,
+      "confidence": 0.1,
+      "recency": 0.1,
+      "reuse": 0.1
+    },
+    "formula": "score = lexical*w.lexical + scope*w.scope + confidence*w.confidence + recency*w.recency + reuse*w.reuse",
+    "stable_tie_breakers": [
+      "scope_specificity_desc",
+      "updated_or_created_at_desc",
+      "memory_id_asc"
+    ]
+  },
+  "fallback_behavior": {
+    "on_missing_or_stale_secondary_indexes": "scan_canonical_store_and_preserve_ranking_semantics",
+    "scope_isolation": "unchanged"
+  },
+  "invariants": [
+    "Lexical retrieval works without optional semantic backends.",
+    "Scope filtering is mandatory and cannot be bypassed by rank score.",
+    "Ranking is stable for identical inputs and canonical index state."
+  ]
+}
