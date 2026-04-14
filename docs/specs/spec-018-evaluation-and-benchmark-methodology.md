@@ -43,6 +43,7 @@ If semantic mode is unavailable, benchmark suites must still run in lexical-only
 - Token savings and memory quality are both first-class outputs.
 - The spec distinguishes benchmark metrics from local runtime health metrics and defines both sets.
 - The benchmark plan makes it possible to declare the zero-dependency MVP successful before the semantic backend exists.
+- The methodology defines a fixed golden-path replay fixture that can be introduced before the full release-evaluation stage.
 
 ## Risks and open questions
 

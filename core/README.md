@@ -1,0 +1,26 @@
+# core
+
+Reusable memory engine package.
+
+This package owns memory-domain behavior and remains host-agnostic.
+
+## Responsibilities
+
+- Canonical memory model and storage contracts
+- Retrieval orchestration (`RetrievalEngine`)
+- Context composition under budget (`ContextPackBuilder`)
+- Optional semantic extension contract (`SemanticBackend`)
+- Host-agnostic normalized boundary for adapter events
+
+## Adapter boundary contract
+
+`core` receives normalized lifecycle events via
+[`contracts/adapter-core-normalized-events.json`](./contracts/adapter-core-normalized-events.json).
+
+This preserves a strict rule: adapters normalize host payloads first, then cross into core using host-agnostic event fields.
+
+## Boundary rules
+
+- Do not import or depend on Codex runtime types here.
+- Adapter-specific lifecycle logic belongs in `adapters/codex/`.
+- CLI command wiring belongs in `cli/`.

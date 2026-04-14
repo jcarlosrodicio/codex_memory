@@ -26,3 +26,7 @@ SPEC-017 | `feat/spec-017-explainability-audit-trail-and-inspection-cli` | SPEC-
 SPEC-018 | `feat/spec-018-evaluation-and-benchmark-methodology` | SPEC-013, SPEC-015, SPEC-016, SPEC-017
 SPEC-019 | `feat/spec-019-quality-gates-and-release-readiness` | SPEC-007, SPEC-017, SPEC-018
 SPEC-020 | `feat/spec-020-public-documentation-and-oss-positioning` | SPEC-017, SPEC-018, SPEC-019
+SPEC-021 | `feat/spec-021-hook-runtime-controls-and-safe-degradation` | SPEC-003, SPEC-015, SPEC-016, SPEC-017
+SPEC-022 | `feat/spec-022-selective-install-and-installation-state` | SPEC-020
+SPEC-023 | `feat/spec-023-session-state-query-export-compact-and-metrics-cli` | SPEC-017, SPEC-018
+SPEC-024 | `feat/spec-024-memory-safety-audit` | SPEC-007, SPEC-017, SPEC-019

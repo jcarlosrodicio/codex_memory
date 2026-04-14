@@ -51,10 +51,19 @@ Template: [`spec-template.md`](./spec-template.md)
 - `SPEC-017` [Explainability, Audit Trail, and Inspection CLI](./spec-017-explainability-audit-trail-and-inspection-cli.md)
 - `SPEC-018` [Evaluation and Benchmark Methodology](./spec-018-evaluation-and-benchmark-methodology.md)
 - `SPEC-019` [Quality Gates and Release Readiness](./spec-019-quality-gates-and-release-readiness.md)
+- `SPEC-021` [Hook Runtime Controls and Safe Degradation](./spec-021-hook-runtime-controls-and-safe-degradation.md)
+
+Token-saving effectiveness and quality impact measurement are defined in `SPEC-018`.
 
 ## Public OSS Docs
 
 - `SPEC-020` [Public Documentation and OSS Positioning](./spec-020-public-documentation-and-oss-positioning.md)
+
+## Post-MVP Operator Surface
+
+- `SPEC-022` [Selective Install and Installation State](./spec-022-selective-install-and-installation-state.md)
+- `SPEC-023` [Session State Query, Export, Compact, and Metrics CLI](./spec-023-session-state-query-export-compact-and-metrics-cli.md)
+- `SPEC-024` [Memory Safety Audit](./spec-024-memory-safety-audit.md)
 
 ## Sequencing
 

@@ -125,16 +125,64 @@ Success criteria:
 
 ## Target local install flow
 
-The docs should eventually describe a local install flow roughly like this:
+The verified local install flow for the current repository is:
 
-1. Copy or link the plugin into the local Codex plugin directory.
-2. Add or update a local marketplace file that points to the plugin path.
-3. Restart Codex if needed so the marketplace entry is discovered.
-4. Enable or add the plugin from Codex app or CLI.
-5. Use the default profile with semantic mode `off`.
-6. Confirm health with a status or metrics surface.
+1. Clone the repository somewhere on the local machine.
+2. Link the repository into `~/.codex/plugins/codex-memory`.
+3. Create or update `~/.agents/plugins/marketplace.json`.
+4. Point the marketplace entry at `./.codex/plugins/codex-memory`.
+5. Restart Codex completely so the personal marketplace is reloaded.
+6. Open `Plugins` in Codex app or `/plugins` in Codex CLI.
+7. Search for `Codex Memory` and install it from `Local Plugins`.
+8. Start in the default profile with semantic mode `off`.
+9. Confirm the plugin is visible in Codex and ready for later memory and metrics surfaces.
 
-The exact commands may evolve with Codex, but the user experience target should stay stable.
+Example:
+
+```bash
+mkdir -p ~/.codex/plugins
+ln -s "/absolute/path/to/codex-memory" ~/.codex/plugins/codex-memory
+mkdir -p ~/.agents/plugins
+```
+
+`~/.agents/plugins/marketplace.json`:
+
+```json
+{
+  "name": "local-plugins",
+  "interface": {
+    "displayName": "Local Plugins"
+  },
+  "plugins": [
+    {
+      "name": "codex-memory",
+      "source": {
+        "source": "local",
+        "path": "./.codex/plugins/codex-memory"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+Expected result:
+
+- Codex CLI reports that the plugin was installed.
+- Codex app shows `Codex Memory` in the plugins list after restart.
+
+If discovery fails, check these first:
+
+- `~/.agents/plugins/marketplace.json` exists.
+- `source.path` is relative and set to `./.codex/plugins/codex-memory`.
+- `~/.codex/plugins/codex-memory` points to this repository.
+- Codex was fully restarted after adding or updating the marketplace entry.
+
+This exact flow should stay stable unless Codex changes its local plugin packaging rules.
 
 ## Manifest and metadata target
 
@@ -146,6 +194,10 @@ The plugin package should be structured so it is both installable locally and re
 - installation should not depend on reading the repository manually.
 
 This gives users a clean local install path now and prepares the package for later marketplace publication.
+
+## Implementation planning note
+
+The first implementation milestone should prove this local install flow early. Installability should not be validated only at the end of the project.
 
 ## What should not happen
 

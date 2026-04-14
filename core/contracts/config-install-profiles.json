@@ -1,0 +1,51 @@
+{
+  "spec_id": "SPEC-004",
+  "default_profile": "default",
+  "profiles": {
+    "default": {
+      "description": "Safe quickstart profile for zero-dependency operation.",
+      "persistence": {
+        "mode": "local_safe"
+      },
+      "learning": {
+        "mode": "enabled"
+      },
+      "semantic": {
+        "mode": "off"
+      },
+      "prompt_injection": {
+        "mode": "bounded"
+      }
+    },
+    "power-user": {
+      "description": "Local-first profile with tighter controls for advanced workflows.",
+      "persistence": {
+        "mode": "local_safe"
+      },
+      "learning": {
+        "mode": "review"
+      },
+      "semantic": {
+        "mode": "off"
+      },
+      "prompt_injection": {
+        "mode": "observe_only"
+      }
+    },
+    "advanced-semantic": {
+      "description": "Optional profile for users explicitly enabling semantic extensions.",
+      "persistence": {
+        "mode": "local_safe"
+      },
+      "learning": {
+        "mode": "enabled"
+      },
+      "semantic": {
+        "mode": "custom"
+      },
+      "prompt_injection": {
+        "mode": "bounded"
+      }
+    }
+  }
+}

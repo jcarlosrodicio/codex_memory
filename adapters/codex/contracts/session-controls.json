@@ -1,0 +1,21 @@
+{
+  "spec_id": "SPEC-003",
+  "controls": {
+    "disable_injection": {
+      "type": "boolean",
+      "default": false,
+      "scope": "session",
+      "effect": "Prevents context pack injection into prompt construction while preserving capture and audit."
+    },
+    "disable_learning": {
+      "type": "boolean",
+      "default": false,
+      "scope": "session",
+      "effect": "Prevents promotion of post-response learning candidates while preserving retrieval and audit."
+    }
+  },
+  "notes": [
+    "Controls are explicit in hook payloads to keep runtime behavior explainable.",
+    "Controls are adapter-level switches; they do not redefine core memory semantics."
+  ]
+}

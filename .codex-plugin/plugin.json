@@ -1,0 +1,47 @@
+{
+  "name": "codex-memory",
+  "version": "0.1.0",
+  "description": "Local-first memory engine plugin with a first-party Codex adapter.",
+  "author": {
+    "name": "Juan Carlos Rodicio",
+    "url": "https://github.com/jcarlosrodicio"
+  },
+  "homepage": "https://github.com/jcarlosrodicio/codex_memory",
+  "repository": "https://github.com/jcarlosrodicio/codex_memory",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "memory",
+    "token-optimization",
+    "developer-tools"
+  ],
+  "skills": "./skills/",
+  "distribution": {
+    "default_path": "local_plugin_install",
+    "marketplace_publication": "future_compatible"
+  },
+  "runtime": {
+    "default_mode": "zero_deps",
+    "semantic_backend": "optional_off_by_default"
+  },
+  "interface": {
+    "displayName": "Codex Memory",
+    "shortDescription": "Local-first memory and context compaction for Codex",
+    "longDescription": "Codex Memory is a local-first memory engine for Codex that captures durable context, compresses session knowledge into reusable memory artifacts, and prepares budget-aware context packs without requiring a semantic backend by default.",
+    "developerName": "Juan Carlos Rodicio",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/jcarlosrodicio/codex_memory",
+    "privacyPolicyURL": "https://github.com/jcarlosrodicio/codex_memory",
+    "termsOfServiceURL": "https://github.com/jcarlosrodicio/codex_memory",
+    "defaultPrompt": [
+      "Inspect the current Codex Memory setup and explain which memory layers are active.",
+      "Help me understand how Codex Memory reduces prompt tokens without losing useful context."
+    ],
+    "brandColor": "#1F6FEB",
+    "screenshots": []
+  }
+}

@@ -21,6 +21,14 @@ Saving every chat transcript is easy, but it is a poor memory strategy for an ag
 
 This project aims to keep what matters and drop what does not.
 
+## V1 non-goals
+
+For v1, this repository explicitly does not aim to:
+
+- replay full chat transcripts as the primary memory mechanism,
+- require external vector infrastructure for the default experience,
+- provide a universal host adapter ecosystem beyond Codex.
+
 ## Core ideas
 
 ### 1. Multi-level memory
@@ -110,6 +118,67 @@ The long-term goal is that a user can identify the plugin from its repository me
 
 Marketplace publication is a later distribution step, not a blocker for the core user experience.
 
+### Local install quickstart
+
+The shortest working path today is:
+
+1. Clone this repository somewhere on your machine.
+2. Link it into the local Codex plugins directory.
+3. Expose it through your personal local marketplace.
+4. Restart Codex and install `Codex Memory`.
+
+Example:
+
+```bash
+mkdir -p ~/.codex/plugins
+ln -s "/absolute/path/to/codex-memory" ~/.codex/plugins/codex-memory
+mkdir -p ~/.agents/plugins
+```
+
+Create `~/.agents/plugins/marketplace.json` with:
+
+```json
+{
+  "name": "local-plugins",
+  "interface": {
+    "displayName": "Local Plugins"
+  },
+  "plugins": [
+    {
+      "name": "codex-memory",
+      "source": {
+        "source": "local",
+        "path": "./.codex/plugins/codex-memory"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+Then:
+
+- restart Codex completely,
+- open `Plugins` in Codex app or run `/plugins` in Codex CLI,
+- search for `Codex Memory`,
+- install it from `Local Plugins`.
+
+Expected result:
+
+- Codex CLI reports that the plugin was installed,
+- and Codex app shows `Codex Memory` in the plugins list after restart.
+
+If the plugin does not appear, check these first:
+
+- `~/.agents/plugins/marketplace.json` exists,
+- `source.path` is `./.codex/plugins/codex-memory`,
+- `~/.codex/plugins/codex-memory` points to this repository,
+- Codex was fully restarted after adding the marketplace entry.
+
 See the evolving install guidance in [`docs/installation.md`](docs/installation.md).
 
 ## Metrics and observability
@@ -159,8 +228,17 @@ Current repository goals:
 - rewrite the legacy specs into a layered product architecture,
 - define measurable token-saving behavior,
 - land a strong zero-dependency MVP before optional semantic enhancements,
+- implement through product milestones with demo-proof and safety controls, not only by horizontal technical layers,
 - document the public OSS story from day one,
 - prepare a clean handoff for implementation work.
+
+Implementation strategy for the current cycle:
+
+- keep `SPEC-001` to `SPEC-004` stable,
+- deliver a local installable Codex plugin path early,
+- add runtime hardening before calling v1 release-ready,
+- move minimal metrics and golden-path replay earlier in the implementation sequence,
+- keep semantic retrieval as a post-MVP enhancement.
 
 ## Contributing and design process
 

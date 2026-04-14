@@ -48,8 +48,15 @@ These specs connect the engine to actual Codex sessions and define how memory mo
 - `SPEC-017` Explainability, Audit Trail, and Inspection CLI
 - `SPEC-018` Evaluation and Benchmark Methodology
 - `SPEC-019` Quality Gates and Release Readiness
+- `SPEC-021` Hook Runtime Controls and Safe Degradation
 
 This layer makes the system inspectable, measurable, and safe to ship.
+
+Important delivery note:
+
+- `SPEC-021` is pre-release hardening, not an optional polish task.
+- Minimal runtime metrics should appear as soon as `ContextPack` exists, even if `SPEC-017` closes later.
+- Golden-path replay fixtures should be introduced before the end of the Codex session pipeline work, not deferred to the very end.
 
 ## Layer 6: Public OSS Docs
 
@@ -57,16 +64,26 @@ This layer makes the system inspectable, measurable, and safe to ship.
 
 This final layer ensures the repository explains itself well enough for public use, adoption, and contribution.
 
+## Post-MVP Operator Surface
+
+- `SPEC-022` Selective Install and Installation State
+- `SPEC-023` Session State Query, Export, Compact, and Metrics CLI
+- `SPEC-024` Memory Safety Audit
+
+These specs extend the operator surface after the zero-dependency MVP is already installable, measurable, and safe.
+
 ## Implementation sequencing
 
 The future implementation should proceed in this order:
 
-1. foundation contracts,
-2. memory model,
-3. zero-dependency retrieval and budgeting,
-4. Codex integration,
-5. audit, evaluation, and release readiness for the zero-dependency MVP,
-6. public docs and release polish,
-7. optional semantic backend enhancement.
+1. local installable Codex plugin minimum (`SPEC-003`, `SPEC-004`),
+2. memory model and scoped persistence (`SPEC-005` to `SPEC-009`),
+3. zero-dependency retrieval and budgeting (`SPEC-010`, `SPEC-011`, `SPEC-013`),
+4. runtime hardening and safe degradation (`SPEC-021`),
+5. Codex session pipeline with early golden-path replay (`SPEC-014` to `SPEC-016`),
+6. explainability, metrics, evaluation, and release readiness (`SPEC-017` to `SPEC-019`),
+7. public docs and release polish (`SPEC-020`),
+8. optional semantic backend enhancement (`SPEC-012`),
+9. post-MVP operator surface (`SPEC-022` to `SPEC-024`).
 
 That order preserves architectural clarity and avoids implementing adapter behavior before the memory model is stable.

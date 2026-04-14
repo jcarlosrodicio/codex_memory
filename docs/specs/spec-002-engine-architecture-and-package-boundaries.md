@@ -1,6 +1,6 @@
 # SPEC-002 — Engine Architecture and Package Boundaries
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Foundation  
 **Depends on:** [SPEC-001]
 

@@ -1,0 +1,41 @@
+{
+  "spec_id": "SPEC-004",
+  "schema_file": "core/contracts/config-schema.v1.json",
+  "precedence_order": [
+    "session_override",
+    "repo_override",
+    "user_default"
+  ],
+  "feature_modes": {
+    "persistence": {
+      "mode_enum": ["local_safe", "read_only", "disabled"],
+      "safe_default": "local_safe"
+    },
+    "learning": {
+      "mode_enum": ["enabled", "review", "disabled"],
+      "safe_default": "enabled"
+    },
+    "semantic": {
+      "mode_enum": ["off", "light", "custom"],
+      "safe_default": "off"
+    },
+    "prompt_injection": {
+      "mode_enum": ["bounded", "observe_only", "disabled"],
+      "safe_default": "bounded"
+    }
+  },
+  "versioning": {
+    "config_schema_version_field": "config_schema_version",
+    "current_version": "1",
+    "migration_guidance": [
+      "Future schema changes must bump config_schema_version and provide an explicit migration note.",
+      "Unknown schema versions must be rejected instead of silently coerced.",
+      "Compatibility shims are opt-in and must preserve deterministic precedence."
+    ]
+  },
+  "fallback_behavior": [
+    "If semantic mode is unavailable or misconfigured, force semantic.mode to off (safe mode).",
+    "If a feature mode value is invalid, fail validation and do not auto-enable a different backend.",
+    "If session overrides are missing, continue with repo override and user default precedence."
+  ]
+}

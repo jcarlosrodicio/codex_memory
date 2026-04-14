@@ -41,6 +41,7 @@ If verbose audit mode is disabled, the system must still emit minimal explainabi
 - Safety filtering applies to audit output.
 - At least one inspect surface exposes the latest token, retrieval, and safety metrics needed to diagnose plugin behavior.
 - The docs distinguish between quick user-facing metrics in Codex and deeper local audit artifacts for contributors.
+- A minimal metric surface is available as soon as `ContextPack` is implemented, even if the full CLI surface lands later.
 
 ## Risks and open questions
 

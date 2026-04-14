@@ -40,6 +40,7 @@ If optional semantic features are not release-ready, the project may still ship 
 - Benchmark and audit requirements are explicit.
 - Zero-dependency mode has first-class release coverage.
 - Release gates explicitly allow shipping the graph-enabled zero-dependency MVP before optional semantic retrieval is implemented.
+- Release evidence distinguishes spec completion, milestone completion, and release completion.
 
 ## Risks and open questions
 

@@ -1,0 +1,152 @@
+{
+  "spec_id": "SPEC-003",
+  "version": "1.0.0",
+  "adapter": "codex",
+  "lifecycle_hooks": {
+    "on_session_start": {
+      "responsibility": "Initialize adapter session state and emit normalized session context to core.",
+      "codex_payload": {
+        "session_id": "string",
+        "started_at": "string (ISO-8601)",
+        "runtime": {
+          "surface": "app|cli|ide",
+          "version": "string"
+        },
+        "workspace": {
+          "root_path": "string",
+          "repository": "string|null",
+          "branch": "string|null"
+        },
+        "controls": {
+          "disable_injection": "boolean",
+          "disable_learning": "boolean"
+        }
+      },
+      "normalized_to_core": {
+        "event_type": "SESSION_STARTED",
+        "session_ref": "string",
+        "occurred_at": "string (ISO-8601)",
+        "scope_hints": {
+          "repo": "string|null",
+          "branch": "string|null"
+        },
+        "session_controls": {
+          "disable_injection": "boolean",
+          "disable_learning": "boolean"
+        }
+      },
+      "returns_to_codex": {
+        "status": "ok|degraded",
+        "capabilities": [
+          "capture",
+          "retrieval",
+          "learning",
+          "audit"
+        ],
+        "warnings": [
+          "string"
+        ]
+      },
+      "fallback": "If workspace metadata is missing, initialize with null scope hints and keep session controls explicit."
+    },
+    "on_before_prompt": {
+      "responsibility": "Request retrieval input preparation and produce an optional bounded context injection candidate.",
+      "codex_payload": {
+        "session_id": "string",
+        "prompt_id": "string",
+        "prompt_text": "string",
+        "user_visible_controls": {
+          "disable_injection": "boolean",
+          "disable_learning": "boolean"
+        },
+        "budget_hint": {
+          "max_tokens_for_memory": "number|null"
+        }
+      },
+      "normalized_to_core": {
+        "event_type": "BEFORE_PROMPT",
+        "session_ref": "string",
+        "prompt_ref": "string",
+        "prompt_excerpt": "string",
+        "session_controls": {
+          "disable_injection": "boolean",
+          "disable_learning": "boolean"
+        },
+        "budget_hint": {
+          "max_tokens_for_memory": "number|null"
+        }
+      },
+      "returns_to_codex": {
+        "inject_context": "boolean",
+        "context_pack": {
+          "pack_id": "string",
+          "content": "string",
+          "token_estimate": "number"
+        },
+        "decision_summary": {
+          "reason": "string",
+          "audit_ref": "string|null"
+        }
+      },
+      "fallback": "If retrieval is unavailable, return inject_context=false and an explicit decision summary without mutating memory."
+    },
+    "on_after_response": {
+      "responsibility": "Emit normalized learning candidates and post-response audit metadata.",
+      "codex_payload": {
+        "session_id": "string",
+        "prompt_id": "string",
+        "assistant_response": "string",
+        "response_stats": {
+          "input_tokens": "number|null",
+          "output_tokens": "number|null"
+        },
+        "controls": {
+          "disable_learning": "boolean"
+        }
+      },
+      "normalized_to_core": {
+        "event_type": "AFTER_RESPONSE",
+        "session_ref": "string",
+        "prompt_ref": "string",
+        "response_excerpt": "string",
+        "metrics": {
+          "input_tokens": "number|null",
+          "output_tokens": "number|null"
+        },
+        "session_controls": {
+          "disable_learning": "boolean"
+        }
+      },
+      "returns_to_codex": {
+        "learning_enqueued": "boolean",
+        "audit_ref": "string|null",
+        "warnings": [
+          "string"
+        ]
+      },
+      "fallback": "If learning extraction fails, skip enqueue, emit warning, and preserve audit continuity."
+    },
+    "on_session_end": {
+      "responsibility": "Finalize session lifecycle, flush pending audit artifacts, and close adapter state safely.",
+      "codex_payload": {
+        "session_id": "string",
+        "ended_at": "string (ISO-8601)",
+        "reason": "completed|cancelled|error"
+      },
+      "normalized_to_core": {
+        "event_type": "SESSION_ENDED",
+        "session_ref": "string",
+        "occurred_at": "string (ISO-8601)",
+        "reason": "completed|cancelled|error"
+      },
+      "returns_to_codex": {
+        "status": "ok|degraded",
+        "audit_summary_ref": "string|null",
+        "warnings": [
+          "string"
+        ]
+      },
+      "fallback": "If finalization is partial, mark degraded status and emit warning; never write malformed memory artifacts."
+    }
+  }
+}

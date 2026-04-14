@@ -1,6 +1,6 @@
 # SPEC-001 — Product Vision and Non-Goals
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Foundation  
 **Depends on:** []
 

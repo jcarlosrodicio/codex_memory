@@ -1,0 +1,52 @@
+{
+  "spec_id": "SPEC-003",
+  "boundary": "adapter_to_core",
+  "normalized_event_contract": {
+    "required_fields": [
+      "event_type",
+      "session_ref",
+      "occurred_at"
+    ],
+    "event_type_enum": [
+      "SESSION_STARTED",
+      "BEFORE_PROMPT",
+      "AFTER_RESPONSE",
+      "SESSION_ENDED"
+    ],
+    "optional_fields": [
+      "prompt_ref",
+      "prompt_excerpt",
+      "response_excerpt",
+      "scope_hints",
+      "session_controls",
+      "budget_hint",
+      "metrics",
+      "reason"
+    ]
+  },
+  "core_response_contract": {
+    "retrieval_response": {
+      "inject_context": "boolean",
+      "context_pack": {
+        "pack_id": "string",
+        "content": "string",
+        "token_estimate": "number"
+      },
+      "decision_summary": {
+        "reason": "string",
+        "audit_ref": "string|null"
+      }
+    },
+    "post_response_ack": {
+      "learning_enqueued": "boolean",
+      "audit_ref": "string|null",
+      "warnings": [
+        "string"
+      ]
+    }
+  },
+  "invariants": [
+    "Core contracts are host-agnostic and cannot depend on Codex runtime types.",
+    "Adapter must normalize runtime-specific payloads before crossing this boundary."
+  ]
+}

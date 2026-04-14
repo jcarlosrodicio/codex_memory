@@ -22,6 +22,26 @@ The architecture is intentionally split into three layers:
    - replay and benchmark tooling
    - quality gates and release checks
 
+## Package boundaries
+
+Target package layout:
+
+```text
+core/
+adapters/codex/
+cli/
+```
+
+Boundary ownership:
+
+- `core/` owns memory-domain logic, storage contracts, retrieval orchestration, and pack building.
+- `adapters/codex/` owns Codex lifecycle integration and host normalization only.
+- `cli/` owns inspection/replay operational surfaces that consume persisted artifacts.
+
+Adapter layer exclusion:
+
+- Storage policy and retrieval policy stay in `core/`, not in `adapters/codex/`.
+
 ## Core memory objects
 
 The engine revolves around five canonical objects:

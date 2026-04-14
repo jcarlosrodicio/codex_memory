@@ -1,6 +1,6 @@
 # SPEC-003 — Codex Adapter and Hook Contracts
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Foundation  
 **Depends on:** [SPEC-001, SPEC-002]
 
@@ -57,3 +57,11 @@ If a specific hook is not available in a target runtime, the adapter must degrad
 - Final Codex runtime APIs may require small payload adjustments.
 - Hook timing can affect how much context is available for learning candidates.
 - The exact plugin packaging surface for Codex app may evolve, so installation requirements should be phrased in capability terms, not brittle UI details.
+
+## Implementation notes
+
+- Hook contracts: `adapters/codex/contracts/codex-hook-contracts.json`
+- Session controls: `adapters/codex/contracts/session-controls.json`
+- Adapter-to-core normalized boundary: `core/contracts/adapter-core-normalized-events.json`
+- Local-first plugin packaging contract: `.codex-plugin/plugin.json`
+- Acceptance verification tests: `adapters/codex/tests/spec-003-contracts.test.mjs`

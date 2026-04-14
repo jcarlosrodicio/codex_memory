@@ -66,6 +66,11 @@ Preferred local surfaces:
 - CLI commands such as `status`, `metrics`, or `inspect-last-pack`,
 - structured local audit files for scripting and long-run analysis.
 
+Implementation planning note:
+
+- As soon as `ContextPack` exists, the implementation should expose a minimum metric set: `pack_tokens`, `retrieved_count`, `dropped_count`, `token_savings_estimate`, `memory_enabled`, and `semantic_mode`.
+- Full benchmark depth can come later, but these metrics should not wait until the end of the roadmap.
+
 ## Minimum benchmark metrics for release
 
 Before claiming the plugin works well, benchmark outputs should show:

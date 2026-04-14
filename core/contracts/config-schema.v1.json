@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codex-memory.dev/schemas/config-schema.v1.json",
+  "title": "codex-memory config schema v1",
+  "description": "SPEC-004 layered configuration schema for user, repository, and session overrides.",
+  "spec_id": "SPEC-004",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "config_schema_version",
+    "profile",
+    "user_default",
+    "repo_override",
+    "session_override"
+  ],
+  "properties": {
+    "config_schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "profile": {
+      "type": "string",
+      "enum": ["default", "power-user", "advanced-semantic"]
+    },
+    "user_default": {
+      "$ref": "#/$defs/configLayer"
+    },
+    "repo_override": {
+      "$ref": "#/$defs/configLayer"
+    },
+    "session_override": {
+      "$ref": "#/$defs/configLayer"
+    }
+  },
+  "$defs": {
+    "configLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "persistence": {
+          "$ref": "#/$defs/persistence"
+        },
+        "learning": {
+          "$ref": "#/$defs/learning"
+        },
+        "semantic": {
+          "$ref": "#/$defs/semantic"
+        },
+        "prompt_injection": {
+          "$ref": "#/$defs/promptInjection"
+        },
+        "budget": {
+          "$ref": "#/$defs/budget"
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["local_safe", "read_only", "disabled"]
+        }
+      }
+    },
+    "learning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["enabled", "review", "disabled"]
+        }
+      }
+    },
+    "semantic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["off", "light", "custom"]
+        }
+      }
+    },
+    "promptInjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["bounded", "observe_only", "disabled"]
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_tokens_for_memory": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
