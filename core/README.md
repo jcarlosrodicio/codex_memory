@@ -28,6 +28,15 @@ This contract defines the five canonical objects (`MemoryEvent`, `MemoryAtom`,
 `MemoryEdge`, `MemoryCapsule`, `ContextPack`) including required versus
 optional fields and the fixed v1 `MemoryAtom` taxonomy.
 
+## Memory store layout and versioning contract
+
+`core` publishes the v1 local-first store/index/versioning contract at
+[`contracts/memory-store-layout.v1.json`](./contracts/memory-store-layout.v1.json).
+
+This contract names canonical persisted artifacts for events, atoms, edges, and
+capsules, declares indexes as secondary read accelerators, and makes schema
+versioning plus migration hooks explicit.
+
 ## Boundary rules
 
 - Do not import or depend on Codex runtime types here.

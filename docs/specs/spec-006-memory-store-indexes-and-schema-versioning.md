@@ -1,6 +1,6 @@
 # SPEC-006 — Memory Store, Indexes, and Schema Versioning
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Memory Model  
 **Depends on:** [SPEC-004, SPEC-005]
 

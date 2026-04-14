@@ -1,0 +1,80 @@
+{
+  "spec_id": "SPEC-006",
+  "store_schema_version": "1",
+  "storage_profile": {
+    "mode": "local-first",
+    "write_pattern": "append-friendly"
+  },
+  "canonical_persisted_artifacts": {
+    "events": {
+      "record_type": "MemoryEvent",
+      "artifact": "events.ndjson",
+      "format": "ndjson",
+      "source_of_truth": true,
+      "required_fields": ["id", "scope", "provenance", "event_type", "occurred_at"]
+    },
+    "atoms": {
+      "record_type": "MemoryAtom",
+      "artifact": "atoms.ndjson",
+      "format": "ndjson",
+      "source_of_truth": true,
+      "required_fields": ["id", "scope", "provenance", "atom_type", "content", "created_at"]
+    },
+    "edges": {
+      "record_type": "MemoryEdge",
+      "artifact": "edges.ndjson",
+      "format": "ndjson",
+      "source_of_truth": true,
+      "required_fields": ["id", "scope", "provenance", "edge_type", "from_memory_id", "to_memory_id", "created_at"]
+    },
+    "capsules": {
+      "record_type": "MemoryCapsule",
+      "artifact": "capsules.ndjson",
+      "format": "ndjson",
+      "source_of_truth": true,
+      "required_fields": ["id", "scope", "provenance", "summary", "source_memory_ids", "created_at"]
+    }
+  },
+  "index_strategy": {
+    "indexes_are_secondary": true,
+    "source_of_truth": "canonical_persisted_artifacts",
+    "deterministic_update_order": ["scope", "type", "confidence", "recency"],
+    "indexes": {
+      "scope": {
+        "artifact": "index.scope.json",
+        "supports_filters": ["scope"]
+      },
+      "type": {
+        "artifact": "index.type.json",
+        "supports_filters": ["atom_type", "edge_type", "record_type"]
+      },
+      "confidence": {
+        "artifact": "index.confidence.json",
+        "supports_filters": ["confidence"]
+      },
+      "recency": {
+        "artifact": "index.recency.json",
+        "supports_filters": ["occurred_at", "created_at", "updated_at"]
+      }
+    },
+    "fallback_behavior": {
+      "on_missing_or_stale_index": "read_canonical_and_rebuild_indexes"
+    }
+  },
+  "versioning": {
+    "schema_version_field": "store_schema_version",
+    "record_version_field": "schema_version",
+    "forward_compatibility": {
+      "unknown_future_schema": "fail_closed_with_explicit_error"
+    },
+    "controlled_migration": {
+      "required_hooks": ["plan_migration", "apply_migration", "verify_migration"],
+      "post_migration_requirement": "rebuild_all_indexes_from_canonical_store"
+    }
+  },
+  "invariants": [
+    "Durable records preserve provenance and scope.",
+    "Indexes accelerate reads and never replace canonical persisted artifacts.",
+    "Schema versioning is explicit at store and record levels."
+  ]
+}
