@@ -1,6 +1,6 @@
 # SPEC-007 — Secret Redaction and Safe Persistence
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Memory Model  
 **Depends on:** [SPEC-005, SPEC-006]
 
