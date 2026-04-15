@@ -9,6 +9,8 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SecretRedactionGate } from "../session/secret-redaction-gate.mjs";
+import { assessMemoryQuality, isNoiseMemoryRecord } from "../session/memory-quality-policy.mjs";
+import { buildScopeKey, normalizeText } from "../retrieval/utils.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTRACT_PATH = path.resolve(__dirname, "../../contracts/memory-store-layout.v1.json");
@@ -79,6 +81,139 @@ function recencyValue(record) {
   );
 }
 
+function countDefinedFields(record) {
+  return Object.values(record ?? {}).filter((value) => value !== null && value !== undefined && value !== "").length;
+}
+
+function isoValue(value) {
+  return String(value ?? "");
+}
+
+function canonicalText(value) {
+  return normalizeText(String(value ?? ""));
+}
+
+function sortedArraySignature(values = []) {
+  return [...new Set((Array.isArray(values) ? values : []).map((item) => String(item)))].sort((a, b) => a.localeCompare(b));
+}
+
+function eventSignature(record) {
+  return JSON.stringify([
+    record.event_type ?? "",
+    buildScopeKey(record.scope),
+    record.provenance?.session_ref ?? "",
+    record.occurred_at ?? "",
+    canonicalText(record.payload?.prompt_excerpt ?? ""),
+    canonicalText(record.payload?.response_excerpt ?? ""),
+    record.payload?.reason ?? "",
+    JSON.stringify(sortedArraySignature(record.source_refs))
+  ]);
+}
+
+function atomSignature(record) {
+  return JSON.stringify([
+    record.atom_type ?? "",
+    buildScopeKey(record.scope),
+    canonicalText(record.content),
+    JSON.stringify(sortedArraySignature(record.source_event_ids)),
+    JSON.stringify(sortedArraySignature(record.supersedes))
+  ]);
+}
+
+function edgeSignature(record) {
+  return JSON.stringify([
+    record.edge_type ?? "",
+    buildScopeKey(record.scope),
+    record.from_memory_id ?? "",
+    record.to_memory_id ?? ""
+  ]);
+}
+
+function capsuleSignature(record) {
+  return JSON.stringify([
+    buildScopeKey(record.scope),
+    canonicalText(record.summary),
+    JSON.stringify(sortedArraySignature(record.source_memory_ids))
+  ]);
+}
+
+function artifactSignature(artifactName, record) {
+  if (artifactName === "events") {
+    return eventSignature(record);
+  }
+
+  if (artifactName === "atoms") {
+    return atomSignature(record);
+  }
+
+  if (artifactName === "edges") {
+    return edgeSignature(record);
+  }
+
+  if (artifactName === "capsules") {
+    return capsuleSignature(record);
+  }
+
+  return JSON.stringify(record);
+}
+
+function chooseCanonicalRecord(records = []) {
+  return records
+    .slice()
+    .sort((left, right) => {
+      const completeness = countDefinedFields(right) - countDefinedFields(left);
+      if (completeness !== 0) {
+        return completeness;
+      }
+
+      const reuseCount = Number(right.reuse_count ?? 0) - Number(left.reuse_count ?? 0);
+      if (reuseCount !== 0) {
+        return reuseCount;
+      }
+
+      const updated = isoValue(right.updated_at).localeCompare(isoValue(left.updated_at));
+      if (updated !== 0) {
+        return updated;
+      }
+
+      const created = isoValue(left.created_at ?? left.occurred_at ?? left.captured_at)
+        .localeCompare(isoValue(right.created_at ?? right.occurred_at ?? right.captured_at));
+      if (created !== 0) {
+        return created;
+      }
+
+      return String(left.id ?? "").localeCompare(String(right.id ?? ""));
+    })[0] ?? null;
+}
+
+function analyzeArtifactRecords(artifactName, records) {
+  const grouped = new Map();
+
+  for (const record of Array.isArray(records) ? records : []) {
+    const signature = artifactSignature(artifactName, record);
+    if (!grouped.has(signature)) {
+      grouped.set(signature, []);
+    }
+    grouped.get(signature).push(record);
+  }
+
+  const duplicateGroups = [...grouped.values()].filter((group) => group.length > 1);
+  return {
+    total: Array.isArray(records) ? records.length : 0,
+    duplicate_groups: duplicateGroups.length,
+    duplicate_records: duplicateGroups.reduce((sum, group) => sum + group.length - 1, 0),
+    duplicate_examples: duplicateGroups.slice(0, 5).map((group) => {
+      const keptRecord = chooseCanonicalRecord(group);
+      return {
+        kept_id: keptRecord?.id ?? null,
+        dropped_ids: group
+          .filter((item) => item !== keptRecord)
+          .map((item) => item.id)
+      };
+    })
+  };
+}
+
 function detectRecordType(record) {
   if (record.event_type) {
     return "MemoryEvent";
@@ -97,6 +232,30 @@ function detectRecordType(record) {
   }
 
   return "Unknown";
+}
+
+function incrementCounter(bucket, key) {
+  const token = String(key ?? "unknown");
+  bucket[token] = Number(bucket[token] ?? 0) + 1;
+}
+
+function qualityAssessmentForRecord(record) {
+  if (record?.atom_type) {
+    return assessMemoryQuality(record.content, { atomType: record.atom_type });
+  }
+
+  if (record?.summary) {
+    return assessMemoryQuality(record.summary, { atomType: "capsule" });
+  }
+
+  return { accepted: true, reason: "non_quality_managed_record" };
+}
+
+function orphanEdges(records = [], validMemoryIds = new Set()) {
+  return (Array.isArray(records) ? records : []).filter((record) => (
+    !validMemoryIds.has(String(record.from_memory_id ?? ""))
+    || !validMemoryIds.has(String(record.to_memory_id ?? ""))
+  ));
 }
 
 function isObject(value) {
@@ -375,6 +534,220 @@ export class LocalMemoryStore {
     writeFileSync(paths.indexes.type, JSON.stringify(indexes.type, null, 2), "utf8");
     writeFileSync(paths.indexes.confidence, JSON.stringify(indexes.confidence, null, 2), "utf8");
     writeFileSync(paths.indexes.recency, JSON.stringify(indexes.recency, null, 2), "utf8");
+  }
+
+  analyzeArtifacts(memoryStore = this.loadMemoryStore()) {
+    const duplicateStats = {
+      events: analyzeArtifactRecords("events", memoryStore.events),
+      atoms: analyzeArtifactRecords("atoms", memoryStore.atoms),
+      edges: analyzeArtifactRecords("edges", memoryStore.edges),
+      capsules: analyzeArtifactRecords("capsules", memoryStore.capsules)
+    };
+
+    const noise = {
+      atoms: (Array.isArray(memoryStore.atoms) ? memoryStore.atoms : []).filter((record) => isNoiseMemoryRecord(record)),
+      capsules: (Array.isArray(memoryStore.capsules) ? memoryStore.capsules : []).filter((record) => isNoiseMemoryRecord(record))
+    };
+    const noiseReasonCounts = {
+      atoms: {},
+      capsules: {}
+    };
+
+    for (const record of noise.atoms) {
+      incrementCounter(noiseReasonCounts.atoms, qualityAssessmentForRecord(record).reason);
+    }
+
+    for (const record of noise.capsules) {
+      incrementCounter(noiseReasonCounts.capsules, qualityAssessmentForRecord(record).reason);
+    }
+
+    const validMemoryIds = new Set([
+      ...(Array.isArray(memoryStore.atoms) ? memoryStore.atoms : []).map((record) => String(record.id)),
+      ...(Array.isArray(memoryStore.capsules) ? memoryStore.capsules : []).map((record) => String(record.id))
+    ]);
+    const orphaned = {
+      edges: orphanEdges(memoryStore.edges, validMemoryIds)
+    };
+
+    return {
+      store_path: this.rootDir,
+      artifact_counts: {
+        events: memoryStore.events.length,
+        atoms: memoryStore.atoms.length,
+        edges: memoryStore.edges.length,
+        capsules: memoryStore.capsules.length
+      },
+      duplicate_counts: {
+        events: duplicateStats.events.duplicate_records,
+        atoms: duplicateStats.atoms.duplicate_records,
+        edges: duplicateStats.edges.duplicate_records,
+        capsules: duplicateStats.capsules.duplicate_records
+      },
+      noise_counts: {
+        atoms: noise.atoms.length,
+        capsules: noise.capsules.length
+      },
+      orphan_counts: {
+        edges: orphaned.edges.length
+      },
+      duplicate_examples: {
+        events: duplicateStats.events.duplicate_examples,
+        atoms: duplicateStats.atoms.duplicate_examples,
+        edges: duplicateStats.edges.duplicate_examples,
+        capsules: duplicateStats.capsules.duplicate_examples
+      },
+      orphan_examples: {
+        edges: orphaned.edges.slice(0, 10).map((record) => ({
+          id: record.id,
+          from_memory_id: record.from_memory_id,
+          to_memory_id: record.to_memory_id
+        }))
+      },
+      noise_examples: {
+        atoms: noise.atoms.slice(0, 10).map((record) => ({
+          id: record.id,
+          atom_type: record.atom_type,
+          content: record.content
+        })),
+        capsules: noise.capsules.slice(0, 10).map((record) => ({
+          id: record.id,
+          summary: record.summary
+        }))
+      },
+      noise_reason_counts: noiseReasonCounts
+    };
+  }
+
+  compactArtifacts({ apply = false } = {}) {
+    const current = this.loadMemoryStore();
+    const analysis = this.analyzeArtifacts(current);
+
+    if (!apply) {
+      return {
+        command: "compact-store",
+        applied: false,
+        reason: "compact-store requires --apply to rewrite canonical artifacts",
+        removed: {
+          events: analysis.duplicate_counts.events,
+          atoms: analysis.duplicate_counts.atoms + analysis.noise_counts.atoms,
+          edges: analysis.duplicate_counts.edges + analysis.orphan_counts.edges,
+          capsules: analysis.duplicate_counts.capsules + analysis.noise_counts.capsules
+        },
+        analysis
+      };
+    }
+
+    const dedupeArtifact = (artifactName, records) => {
+      const grouped = new Map();
+      for (const record of records) {
+        const signature = artifactSignature(artifactName, record);
+        if (!grouped.has(signature)) {
+          grouped.set(signature, []);
+        }
+        grouped.get(signature).push(record);
+      }
+
+      return [...grouped.values()].map((group) => chooseCanonicalRecord(group)).filter(Boolean);
+    };
+
+    const dedupedEvents = dedupeArtifact("events", current.events);
+    let dedupedAtoms = dedupeArtifact("atoms", current.atoms);
+    let dedupedEdges = dedupeArtifact("edges", current.edges);
+    let dedupedCapsules = dedupeArtifact("capsules", current.capsules);
+    const removedBreakdown = {
+      events: {
+        duplicates: current.events.length - dedupedEvents.length
+      },
+      atoms: {
+        duplicates: current.atoms.length - dedupedAtoms.length,
+        noise: 0
+      },
+      edges: {
+        duplicates: current.edges.length - dedupedEdges.length,
+        orphans: 0
+      },
+      capsules: {
+        duplicates: current.capsules.length - dedupedCapsules.length,
+        noise: 0,
+        orphaned_sources: 0
+      }
+    };
+
+    const removedNoiseAtomIds = new Set(
+      dedupedAtoms.filter((record) => isNoiseMemoryRecord(record)).map((record) => String(record.id))
+    );
+    removedBreakdown.atoms.noise = removedNoiseAtomIds.size;
+    dedupedAtoms = dedupedAtoms.filter((record) => !removedNoiseAtomIds.has(String(record.id)));
+
+    const survivingAtomIds = new Set(dedupedAtoms.map((record) => String(record.id)));
+    const survivingMemoryIds = new Set([
+      ...survivingAtomIds,
+      ...dedupedCapsules.map((record) => String(record.id))
+    ]);
+
+    dedupedEdges = dedupedEdges.filter((record) => {
+      const keep = (
+        !removedNoiseAtomIds.has(String(record.from_memory_id))
+        && !removedNoiseAtomIds.has(String(record.to_memory_id))
+        && survivingMemoryIds.has(String(record.from_memory_id))
+        && survivingMemoryIds.has(String(record.to_memory_id))
+      );
+
+      if (!keep) {
+        removedBreakdown.edges.orphans += 1;
+      }
+
+      return keep;
+    });
+
+    const dedupedCapsulesBeforeQuality = dedupedCapsules.length;
+    dedupedCapsules = dedupedCapsules.filter((record) => {
+      return !isNoiseMemoryRecord(record);
+    });
+    removedBreakdown.capsules.noise = dedupedCapsulesBeforeQuality - dedupedCapsules.length;
+
+    const capsulesBeforeOrphanCheck = dedupedCapsules.length;
+    dedupedCapsules = dedupedCapsules.filter((record) => {
+      const sourceIds = Array.isArray(record.source_memory_ids)
+        ? record.source_memory_ids.map((item) => String(item))
+        : [];
+
+      return sourceIds.length === 0 || sourceIds.some((id) => survivingAtomIds.has(id));
+    });
+    removedBreakdown.capsules.orphaned_sources = capsulesBeforeOrphanCheck - dedupedCapsules.length;
+
+    const cleanStore = {
+      events: dedupedEvents,
+      atoms: dedupedAtoms,
+      edges: dedupedEdges,
+      capsules: dedupedCapsules
+    };
+
+    this.rewriteCanonicalArtifact("events", cleanStore.events);
+    this.rewriteCanonicalArtifact("atoms", cleanStore.atoms);
+    this.rewriteCanonicalArtifact("edges", cleanStore.edges);
+    this.rewriteCanonicalArtifact("capsules", cleanStore.capsules);
+    this.rebuildIndexes(cleanStore);
+
+    return {
+      command: "compact-store",
+      applied: true,
+      removed: {
+        events: current.events.length - cleanStore.events.length,
+        atoms: current.atoms.length - cleanStore.atoms.length,
+        edges: current.edges.length - cleanStore.edges.length,
+        capsules: current.capsules.length - cleanStore.capsules.length
+      },
+      removed_breakdown: removedBreakdown,
+      kept: {
+        events: cleanStore.events.length,
+        atoms: cleanStore.atoms.length,
+        edges: cleanStore.edges.length,
+        capsules: cleanStore.capsules.length
+      },
+      analysis_before: analysis,
+      analysis_after: this.analyzeArtifacts(cleanStore)
+    };
   }
 
   _appendRecord(artifactName, record, inMemoryTarget) {

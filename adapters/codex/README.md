@@ -33,9 +33,9 @@ implements the four lifecycle hooks and delegates memory-domain rules to `core`.
 Runtime hook entrypoint:
 
 - `adapters/codex/bin/codex-memory-hook.mjs`
-- repo runtime hook config: `.codex/hooks.json`
 
-Codex runtime discovery uses `~/.codex/hooks.json` (global) and `<repo>/.codex/hooks.json` (repo-local).
+Codex runtime discovery supports both `~/.codex/hooks.json` (global) and `<repo>/.codex/hooks.json` (repo-local),
+but this repository intentionally uses only global activation.
 
 Recommended activation for production usage across repositories is global hooks installation:
 
@@ -43,6 +43,11 @@ Recommended activation for production usage across repositories is global hooks 
 
 This performs a safe merge into `~/.codex/hooks.json` and preserves non-Codex Memory hooks.
 It also enables `codex_hooks = true` under `[features]` in `~/.codex/config.toml`.
+
+Why no repo-local hooks file in this repo:
+
+- having both global and repo-local hook configs active in `codex-memory` causes the same hook chain to execute twice.
+- duplicate execution leads to duplicated capture/consolidation/audit artifacts and noisy manual validation.
 
 Event mapping used for real runtime:
 

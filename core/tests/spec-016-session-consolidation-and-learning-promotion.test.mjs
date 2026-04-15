@@ -4,7 +4,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   SessionConsolidator,
-  SessionPipelineCore
+  SessionPipelineCore,
+  SessionSignalExtractor
 } from "../src/index.mjs";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
@@ -223,5 +224,106 @@ test("Regression: contradiction is detected when durable memory is affirmative a
     result.promoted_edges.some(
       (edge) => edge.edge_type === "contradicts" && edge.to_memory_id === "atom-aff-existing"
     )
+  );
+});
+
+test("SPEC-016 rejects generic prompt scaffolding and review artifacts from durable promotion", () => {
+  const consolidator = new SessionConsolidator({
+    minPromotionConfidence: 0.68,
+    now: () => "2026-04-14T10:30:00.000Z"
+  });
+
+  const result = consolidator.consolidate({
+    sessionState: {
+      session_ref: "s-016-noise-filter",
+      signal_buffer: [
+        {
+          id: "sig-generic-1",
+          event_id: "evt-generic-1",
+          atom_type: "fact",
+          content: "You are a helpful assistant",
+          scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+          confidence: 0.92,
+          created_at: "2026-04-14T10:01:00.000Z"
+        },
+        {
+          id: "sig-generic-2",
+          event_id: "evt-generic-2",
+          atom_type: "preference",
+          content: "::code-comment{title=\"[P1] review\" body=\"do this\"}",
+          scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+          confidence: 0.88,
+          created_at: "2026-04-14T10:01:05.000Z"
+        },
+        {
+          id: "sig-good",
+          event_id: "evt-good",
+          atom_type: "workflow",
+          content: "Always run node --test before finalize changes",
+          scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+          confidence: 0.91,
+          created_at: "2026-04-14T10:02:00.000Z"
+        },
+        {
+          id: "sig-generic-3",
+          event_id: "evt-generic-3",
+          atom_type: "bugfix",
+          content: "No encontré findings nuevos en este fix",
+          scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+          confidence: 0.9,
+          created_at: "2026-04-14T10:02:05.000Z"
+        },
+        {
+          id: "sig-generic-4",
+          event_id: "evt-generic-4",
+          atom_type: "workflow",
+          content: "El test nuevo en `/Users/juanca/project/adapters/codex/tests/spec-025-runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix",
+          scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+          confidence: 0.9,
+          created_at: "2026-04-14T10:02:06.000Z"
+        }
+      ]
+    },
+    memoryStore: { atoms: [], edges: [], capsules: [] },
+    disableLearning: false
+  });
+
+  assert.deepEqual(
+    result.promoted_atoms.map((atom) => atom.content),
+    ["Always run node --test before finalize changes"]
+  );
+  assert.ok(result.dropped.some((item) => item.candidate_id === "sig-generic-1" && item.reason === "rejected_by_quality_policy"));
+  assert.ok(result.dropped.some((item) => item.candidate_id === "sig-generic-2" && item.reason === "rejected_by_quality_policy"));
+  assert.ok(result.dropped.some((item) => item.quality_reason === "review_chatter"));
+  assert.ok(result.dropped.some((item) => item.quality_reason === "path_reference_noise"));
+});
+
+test("SPEC-016 extractor suppresses generic scaffolding while preserving durable workflow and constraint signals", () => {
+  const extractor = new SessionSignalExtractor({
+    maxSignalsPerEvent: 6,
+    minConfidence: 0.4
+  });
+
+  const extracted = extractor.extract({
+    id: "evt-016-quality",
+    event_type: "BEFORE_PROMPT",
+    occurred_at: "2026-04-14T10:00:00.000Z",
+    scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+    payload: {
+      prompt_excerpt: [
+        "You are a helpful assistant.",
+        "Your job is to provide a short title for a task.",
+        "Always run node --test before finalize.",
+        "Do not use external services for the default path."
+      ].join(" ")
+    }
+  });
+
+  assert.deepEqual(
+    extracted.map((signal) => signal.content),
+    [
+      "Always run node --test before finalize",
+      "Do not use external services for the default path"
+    ]
   );
 });

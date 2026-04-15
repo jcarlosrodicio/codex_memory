@@ -1,55 +1,76 @@
 # SPEC-020 — Public Documentation and OSS Positioning
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Public OSS Docs  
-**Depends on:** [SPEC-017, SPEC-018, SPEC-019]
+**Depends on:** [SPEC-017, SPEC-018, SPEC-019, SPEC-025]
 
 ## Product objective
 
-Ensure the repository explains the product clearly to public readers, contributors, and future users before implementation details begin to dominate the project.
+Ensure the repository explains the actual product clearly to public readers, contributors, and future users before implementation details dominate the public surface.
 
 ## Architectural decision
 
-Documentation is treated as part of the product surface. The README and companion docs must explain the problem, architecture, safety model, operating modes, and contribution flow in public-facing language.
+Documentation is treated as part of the product surface. The README and companion docs must describe the runtime that ships today: installation, activation, persistence, metrics, memory quality rules, store cleanup, safety, and current limitations.
 
 ## Public interfaces or types affected
 
 - `README.md`
 - `docs/installation.md`
-- `docs/metrics.md`
 - `docs/architecture.md`
 - `docs/security-and-privacy.md`
 - `docs/spec-roadmap.md`
-- future contributing and quickstart guides
+- `cli/README.md`
+- store maintenance documentation tied to inspection/audit workflows
 
 ## Invariants and exclusions
 
-- Public docs must describe the project as `memory engine + Codex adapter`.
+- Public docs describe the project as `memory engine + Codex adapter`.
 - README content must be understandable without reading internal planning docs first.
-- Documentation must state that semantic retrieval is optional.
-- Documentation must present local installation as the default first-use path until marketplace publication exists.
-- Documentation must not promise unsupported direct installation from a Git repository URL unless Codex docs explicitly support it.
-- Marketing copy unsupported by specs or benchmarks is out of scope.
+- Docs must state that semantic retrieval is optional.
+- Docs must present local installation as the default first-use path until marketplace publication exists.
+- Docs must describe runtime activation and observable persistence as separate from simple installability.
+- Docs must explain good durable memory vs noise using deterministic, reviewable rules.
+- Docs must document store maintenance commands including `analyze-store`, `compact-store`, and the explicit `--apply` gate.
+- Docs must explain how the hook installer avoids bare-`node` runtime failures and how to recover from visible `hook exited with code 127`.
+- Docs must not promise unsupported direct installation from a Git repository URL unless Codex docs explicitly support it.
+- Marketing copy unsupported by the implemented runtime or benchmarks is out of scope.
 
 ## Data flow
 
-Architecture and spec decisions are distilled into public docs. Those docs point readers toward the spec index, roadmap, and safety model without requiring prior context from private design discussions.
+Architecture and spec decisions are distilled into public docs. Public readers should be able to understand:
 
-## Fallback behavior
+1. how Codex hooks activate,
+2. where data persists,
+3. how durable memory is promoted,
+4. why obviously bad memories such as `You are a helpful assistant` are rejected,
+5. why review chatter like `No encontré findings nuevos...` and path-heavy review fragments are rejected,
+6. how to inspect, benchmark, and compact the local store,
+7. how to verify that installed hook commands no longer depend on host `PATH`.
 
-If implementation lags behind docs, the docs must clearly label roadmap items as planned rather than shipped.
+## Implemented scope
+
+This spec is satisfied by the current public surface:
+
+- the README now describes the real MVP instead of a mostly-planned repository,
+- installation docs cover local install, global activation, `codex_hooks = true`, and persistence verification,
+- installation docs now cover the `127` troubleshooting path and explicit-node hook command verification,
+- architecture docs explain the memory-quality policy and explicit store maintenance path,
+- security docs explain why bad durable memory is a safety and trust problem,
+- the CLI README documents analysis and compaction commands,
+- the roadmap marks `SPEC-020` as implemented and clarifies what remains post-MVP.
 
 ## Acceptance criteria
 
-- The README covers problem statement, core ideas, modes of operation, safety, and roadmap.
-- Public docs define a simple-install target for Codex app users and a compatible CLI story.
+- The README covers the problem statement, core ideas, current MVP status, operating modes, safety model, maintenance commands, and roadmap posture.
+- Public docs define a simple install target for Codex app users and a compatible CLI story.
 - Public docs explain local installation clearly and describe marketplace publication as a future distribution channel.
-- Public docs explain that repository metadata helps future publication and discovery, but local marketplace installation is the supported path for early releases.
-- Public docs explain which metrics prove the plugin is healthy and useful.
-- Public docs link to the spec tree and stay consistent with it.
-- The repository can be understood by a new GitHub visitor in a single reading pass.
+- Public docs explain the healthy runtime signals and metrics a maintainer should inspect.
+- Public docs define a practical “good memory” policy and name concrete rejected examples such as `You are a helpful assistant` and generic scaffolding/noise.
+- Public docs explain how `analyze-store` and `compact-store --apply` fit into release hygiene and benchmark trustworthiness.
+- The repository can be understood by a new GitHub visitor in one pass without hidden context.
 
-## Risks and open questions
+## Remaining follow-ups
 
-- Public docs can drift quickly unless they are tied to spec changes.
-- The eventual quickstart will depend on runtime choices that are not finalized yet.
+- richer export/query/history workflows still belong to post-MVP operator work,
+- optional semantic-mode docs can grow once that path is real,
+- future contribution docs can expand once the public runtime surface stabilizes further.

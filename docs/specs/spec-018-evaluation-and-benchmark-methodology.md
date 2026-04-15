@@ -1,6 +1,6 @@
 # SPEC-018 — Evaluation and Benchmark Methodology
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Operations and Evaluation  
 **Depends on:** [SPEC-013, SPEC-015, SPEC-016, SPEC-017]
 

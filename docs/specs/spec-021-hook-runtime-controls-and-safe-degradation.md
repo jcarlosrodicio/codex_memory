@@ -1,6 +1,6 @@
 # SPEC-021 — Hook Runtime Controls and Safe Degradation
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Operations and Evaluation  
 **Depends on:** [SPEC-003, SPEC-015, SPEC-016, SPEC-017]
 
@@ -42,6 +42,7 @@ If any hook phase is unavailable, disabled, or failing, the adapter must continu
 - The spec defines throttling or loop-prevention guards for capture and promotion.
 - Session-end fallback behavior is documented and testable.
 - Hook execution is described in terms of stable script entrypoints rather than fragile inline commands.
+- Global hook commands must not rely on bare `node` being present in host `PATH`; installer-generated commands should use a resolved executable path, preferring a stable alias when available.
 - The spec can be implemented without modifying `SPEC-001` to `SPEC-004`.
 
 ## Risks and open questions

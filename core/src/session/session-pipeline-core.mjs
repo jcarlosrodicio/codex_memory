@@ -36,6 +36,12 @@ function serializeContextPack(contextPack) {
   return lines.join("\n");
 }
 
+function mergeReasonCounts(target, incoming = {}) {
+  for (const [reason, count] of Object.entries(incoming)) {
+    target[reason] = Number(target[reason] ?? 0) + Number(count ?? 0);
+  }
+}
+
 export class SessionPipelineCore {
   constructor(options = {}) {
     this.retrievalEngine = options.retrievalEngine ?? new RetrievalEngine(options.retrieval_options);
@@ -58,7 +64,13 @@ export class SessionPipelineCore {
       },
       event_buffer: [memoryEvent],
       signal_buffer: [],
-      warnings: []
+      warnings: [],
+      learning_stats: {
+        signals_seen: 0,
+        signals_promoted_to_buffer: 0,
+        signals_rejected_by_quality_policy: 0,
+        dropped_by_reason: {}
+      }
     };
 
     return {
@@ -73,7 +85,8 @@ export class SessionPipelineCore {
       scope: adapterEvent.scope ?? state.scope
     });
 
-    const extractedSignals = this.signalExtractor.extract(memoryEvent);
+    const extraction = this.signalExtractor.extractDetailed(memoryEvent);
+    const extractedSignals = extraction.signals;
 
     const nextEventBuffer = withBoundedBuffer(state.event_buffer, [memoryEvent], this.maxEventBuffer);
     const nextSignalBuffer = withBoundedBuffer(state.signal_buffer, extractedSignals, this.maxSignalBuffer);
@@ -89,9 +102,19 @@ export class SessionPipelineCore {
       state.warnings.push(`signal_buffer_trimmed:${nextSignalBuffer.dropped}`);
     }
 
+    state.learning_stats.signals_seen += Number(extraction.stats.candidate_count ?? 0);
+    state.learning_stats.signals_promoted_to_buffer += extractedSignals.length;
+    state.learning_stats.signals_rejected_by_quality_policy += Number(
+      Object.entries(extraction.stats.dropped_by_reason ?? {})
+        .filter(([reason]) => !["no_signal_match", "low_signal_confidence"].includes(reason))
+        .reduce((sum, [, count]) => sum + Number(count ?? 0), 0)
+    );
+    mergeReasonCounts(state.learning_stats.dropped_by_reason, extraction.stats.dropped_by_reason);
+
     return {
       memory_event: memoryEvent,
       extracted_signals: extractedSignals,
+      extraction_stats: extraction.stats,
       state
     };
   }

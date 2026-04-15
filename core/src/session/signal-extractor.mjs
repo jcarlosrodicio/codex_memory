@@ -4,6 +4,7 @@ import {
   makeDeterministicId,
   safeString
 } from "./utils.mjs";
+import { assessMemoryQuality } from "./memory-quality-policy.mjs";
 
 const SIGNAL_RULES = Object.freeze([
   {
@@ -79,6 +80,10 @@ export class SessionSignalExtractor {
   }
 
   extract(memoryEvent) {
+    return this.extractDetailed(memoryEvent).signals;
+  }
+
+  extractDetailed(memoryEvent) {
     const sourceText = safeString(
       memoryEvent.payload?.prompt_excerpt
       ?? memoryEvent.payload?.response_excerpt
@@ -86,15 +91,31 @@ export class SessionSignalExtractor {
     );
 
     if (!sourceText) {
-      return [];
+      return {
+        signals: [],
+        dropped: [],
+        stats: {
+          candidate_count: 0,
+          accepted_count: 0,
+          dropped_by_reason: {}
+        }
+      };
     }
 
     const sentenceCandidates = splitSignalSentences(sourceText);
     const signals = [];
+    const dropped = [];
+    const droppedByReason = {};
+
+    const recordDrop = (sentence, reason) => {
+      dropped.push({ sentence, reason });
+      droppedByReason[reason] = Number(droppedByReason[reason] ?? 0) + 1;
+    };
 
     for (const sentence of sentenceCandidates) {
       const match = matchSignalType(sentence);
       if (!match) {
+        recordDrop(sentence, "no_signal_match");
         continue;
       }
 
@@ -105,6 +126,15 @@ export class SessionSignalExtractor {
       });
 
       if (confidence < this.minConfidence) {
+        recordDrop(sentence, "low_signal_confidence");
+        continue;
+      }
+
+      const quality = assessMemoryQuality(sentence, {
+        atomType: match.atom_type
+      });
+      if (!quality.accepted) {
+        recordDrop(sentence, quality.reason);
         continue;
       }
 
@@ -130,6 +160,14 @@ export class SessionSignalExtractor {
       }
     }
 
-    return signals;
+    return {
+      signals,
+      dropped,
+      stats: {
+        candidate_count: sentenceCandidates.length,
+        accepted_count: signals.length,
+        dropped_by_reason: droppedByReason
+      }
+    };
   }
 }

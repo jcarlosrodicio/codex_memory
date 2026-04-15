@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { SessionPipelineCore } from "../src/index.mjs";
+import { assessMemoryQuality } from "../src/session/memory-quality-policy.mjs";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 
@@ -113,4 +114,31 @@ test("SPEC-014 keeps capture/session buffers bounded and drops oldest entries de
   assert.equal(state.signal_buffer.length, 2);
   assert.ok(state.warnings.some((warning) => warning.startsWith("event_buffer_trimmed:")));
   assert.ok(state.warnings.some((warning) => warning.startsWith("signal_buffer_trimmed:")));
+});
+
+test("SPEC-014 durable-memory policy rejects review/meta chatter and keeps durable repo knowledge", () => {
+  assert.deepEqual(
+    assessMemoryQuality("No encontré findings nuevos en este fix", { atomType: "bugfix" }),
+    { accepted: false, reason: "review_chatter" }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality("El test nuevo en `/Users/juanca/project/adapters/codex/tests/spec-025-runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix", { atomType: "workflow" }),
+    { accepted: false, reason: "path_reference_noise" }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality("You are a helpful assistant", { atomType: "fact" }),
+    { accepted: false, reason: "generic_system_scaffolding" }
+  );
+
+  assert.equal(
+    assessMemoryQuality("Default store path is ~/.codex/plugins/codex-memory/data", { atomType: "fact" }).accepted,
+    true
+  );
+
+  assert.equal(
+    assessMemoryQuality("Always rebuild indexes after compact-store --apply", { atomType: "workflow" }).accepted,
+    true
+  );
 });

@@ -1,6 +1,6 @@
 # SPEC-017 — Explainability, Audit Trail, and Inspection CLI
 
-**Status:** Proposed  
+**Status:** Implemented  
 **Layer:** Operations and Evaluation  
 **Depends on:** [SPEC-013, SPEC-015, SPEC-016]
 

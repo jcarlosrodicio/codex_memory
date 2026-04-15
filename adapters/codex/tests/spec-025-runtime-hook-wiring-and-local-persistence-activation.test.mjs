@@ -1,12 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { LocalMemoryStore } from "../../../core/src/index.mjs";
 
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../..");
+const nodeBin = process.execPath;
 
 async function readJson(relativePath) {
   const filePath = path.join(repoRoot, relativePath);
@@ -55,7 +57,7 @@ function realCodexPayloads(sessionId) {
 
 async function invokeHook({ hook, payload, storePath, extraEnv = {} }) {
   const hookScript = path.join(repoRoot, "adapters/codex/bin/codex-memory-hook.mjs");
-  const child = spawn("node", [hookScript, hook, "--store-path", storePath], {
+  const child = spawn(nodeBin, [hookScript, hook, "--store-path", storePath], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -92,24 +94,10 @@ async function invokeHook({ hook, payload, storePath, extraEnv = {} }) {
   return JSON.parse(String(output).trim());
 }
 
-test("SPEC-025 uses repo-level .codex/hooks.json with Codex-supported events", async () => {
-  const hooksConfig = await readJson(".codex/hooks.json");
+test("SPEC-025 avoids repo-local hooks.json to prevent duplicate activation with global hooks", async () => {
   const pluginManifest = await readJson(".codex-plugin/plugin.json");
-
-  assert.deepEqual(Object.keys(hooksConfig.hooks).sort(), [
-    "SessionStart",
-    "Stop",
-    "UserPromptSubmit"
-  ]);
-
-  for (const eventName of ["SessionStart", "UserPromptSubmit", "Stop"]) {
-    const entries = hooksConfig.hooks[eventName];
-    assert.ok(Array.isArray(entries) && entries.length > 0);
-
-    const firstHook = entries[0].hooks?.[0];
-    assert.equal(firstHook.type, "command");
-    assert.match(firstHook.command, /codex-memory-hook\.mjs/);
-  }
+  const repoHooksPath = path.join(repoRoot, ".codex/hooks.json");
+  assert.equal(existsSync(repoHooksPath), false);
 
   assert.equal(typeof pluginManifest.hooks, "undefined");
 });
@@ -164,7 +152,7 @@ test("SPEC-025 default persistence root resolves to ~/.codex/plugins/codex-memor
     "console.log(store.getRootDir());"
   ].join("");
 
-  const result = spawnSync("node", ["--input-type=module", "-e", script], {
+  const result = spawnSync(nodeBin, ["--input-type=module", "-e", script], {
     cwd: repoRoot,
     env: {
       ...process.env,

@@ -34,6 +34,13 @@ export class CodexMemoryAdapter {
   constructor(options = {}) {
     this.pipeline = options.pipeline ?? new SessionPipelineCore(options.pipeline_options);
     this.runtimeWarnings = [];
+    this.runtimeControls = {
+      disable_capture: Boolean(options.runtime_controls?.disable_capture),
+      disable_consolidation: Boolean(options.runtime_controls?.disable_consolidation),
+      max_promoted_signals: Number.isInteger(options.runtime_controls?.max_promoted_signals)
+        ? options.runtime_controls.max_promoted_signals
+        : null
+    };
 
     const shouldAutoEnablePersistence = (
       options.enablePersistence !== false
@@ -100,17 +107,21 @@ export class CodexMemoryAdapter {
     state.controls = sessionControls;
     const persistenceWarnings = [];
 
-    const capture = this.pipeline.capture(state, {
-      event_type: "BEFORE_PROMPT",
-      session_ref: payload.session_id,
-      occurred_at: payload.occurred_at,
-      prompt_ref: payload.prompt_id,
-      prompt_excerpt: promptExcerpt(payload.prompt_text),
-      scope: state.scope,
-      budget_hint: payload.budget_hint,
-      session_controls: sessionControls
-    });
-    this._persistEvent(capture.memory_event, persistenceWarnings);
+    if (!this.runtimeControls.disable_capture) {
+      const capture = this.pipeline.capture(state, {
+        event_type: "BEFORE_PROMPT",
+        session_ref: payload.session_id,
+        occurred_at: payload.occurred_at,
+        prompt_ref: payload.prompt_id,
+        prompt_excerpt: promptExcerpt(payload.prompt_text),
+        scope: state.scope,
+        budget_hint: payload.budget_hint,
+        session_controls: sessionControls
+      });
+      this._persistEvent(capture.memory_event, persistenceWarnings);
+    } else {
+      persistenceWarnings.push("capture_disabled_by_runtime_control");
+    }
 
     try {
       const injection = await this.pipeline.buildInjection({
@@ -129,10 +140,12 @@ export class CodexMemoryAdapter {
           inject_context: false,
           context_pack: null,
           decision_summary: injection.decision_summary,
+          context_pack_audit: this._buildContextPackAudit(injection.context_pack),
           injection_metadata: {
             disabled_by_control: sessionControls.disable_injection,
-            token_estimate: 0,
-            pack_item_count: 0,
+            token_estimate: injection.context_pack?.token_estimate ?? 0,
+            pack_item_count: injection.context_pack?.pack_items?.length ?? 0,
+            pack_metrics: injection.metrics ?? null,
             persistence_warnings: persistenceWarnings
           }
         };
@@ -146,6 +159,7 @@ export class CodexMemoryAdapter {
           token_estimate: injection.context_pack.token_estimate
         },
         decision_summary: injection.decision_summary,
+        context_pack_audit: this._buildContextPackAudit(injection.context_pack),
         injection_metadata: {
           disabled_by_control: false,
           token_estimate: injection.context_pack.token_estimate,
@@ -188,6 +202,15 @@ export class CodexMemoryAdapter {
     };
     state.controls = nextControls;
 
+    if (this.runtimeControls.disable_capture) {
+      persistenceWarnings.push("capture_disabled_by_runtime_control");
+      return {
+        learning_enqueued: false,
+        audit_ref: null,
+        warnings: persistenceWarnings
+      };
+    }
+
     const capture = this.pipeline.capture(state, {
       event_type: "AFTER_RESPONSE",
       session_ref: payload.session_id,
@@ -218,17 +241,40 @@ export class CodexMemoryAdapter {
       };
     }
 
-    const capture = this.pipeline.capture(state, {
-      event_type: "SESSION_ENDED",
-      session_ref: payload.session_id,
-      occurred_at: payload.ended_at,
-      reason: payload.reason,
-      scope: state.scope,
-      session_controls: state.controls
-    });
-    this._persistEvent(capture.memory_event, persistenceWarnings);
+    if (!this.runtimeControls.disable_capture) {
+      const capture = this.pipeline.capture(state, {
+        event_type: "SESSION_ENDED",
+        session_ref: payload.session_id,
+        occurred_at: payload.ended_at,
+        reason: payload.reason,
+        scope: state.scope,
+        session_controls: state.controls
+      });
+      this._persistEvent(capture.memory_event, persistenceWarnings);
+    } else {
+      persistenceWarnings.push("capture_disabled_by_runtime_control");
+    }
+
+    if (this.runtimeControls.disable_consolidation) {
+      this.sessions.delete(payload.session_id);
+      return {
+        status: "degraded",
+        audit_summary_ref: `session_end_${payload.session_id}`,
+        warnings: [...persistenceWarnings, "consolidation_disabled_by_runtime_control"],
+        learning_stats: state.learning_stats,
+        consolidation: {
+          learning_enabled: false,
+          promoted_atoms: [],
+          promoted_edges: [],
+          promoted_capsule: null,
+          dropped: [],
+          warnings: ["consolidation_disabled_by_runtime_control"]
+        }
+      };
+    }
 
     try {
+      this._applyPromotionLimit(state, persistenceWarnings);
       const consolidation = this.pipeline.consolidateSession({
         state,
         memoryStore: this.memoryStore,
@@ -242,6 +288,7 @@ export class CodexMemoryAdapter {
         status: (consolidation.warnings.length > 0 || persistenceWarnings.length > 0) ? "degraded" : "ok",
         audit_summary_ref: `session_end_${payload.session_id}`,
         warnings: [...consolidation.warnings, ...persistenceWarnings],
+        learning_stats: state.learning_stats,
         consolidation
       };
     } catch (error) {
@@ -274,22 +321,44 @@ export class CodexMemoryAdapter {
 
     let learningEnqueued = false;
     if (String(payload.assistant_response ?? "").trim().length > 0) {
-      const capture = this.pipeline.capture(state, {
-        event_type: "AFTER_RESPONSE",
-        session_ref: payload.session_id,
-        occurred_at: payload.occurred_at,
-        prompt_ref: payload.prompt_id,
-        response_excerpt: promptExcerpt(payload.assistant_response),
-        metrics: payload.response_stats ?? null,
-        scope: state.scope,
-        session_controls: nextControls
-      });
-      this._persistEvent(capture.memory_event, persistenceWarnings);
-      learningEnqueued = capture.extracted_signals.length > 0;
+      if (!this.runtimeControls.disable_capture) {
+        const capture = this.pipeline.capture(state, {
+          event_type: "AFTER_RESPONSE",
+          session_ref: payload.session_id,
+          occurred_at: payload.occurred_at,
+          prompt_ref: payload.prompt_id,
+          response_excerpt: promptExcerpt(payload.assistant_response),
+          metrics: payload.response_stats ?? null,
+          scope: state.scope,
+          session_controls: nextControls
+        });
+        this._persistEvent(capture.memory_event, persistenceWarnings);
+        learningEnqueued = capture.extracted_signals.length > 0;
+      } else {
+        persistenceWarnings.push("capture_disabled_by_runtime_control");
+      }
+    }
+
+    if (this.runtimeControls.disable_consolidation) {
+      return {
+        status: "degraded",
+        learning_enqueued: false,
+        warnings: [...persistenceWarnings, "consolidation_disabled_by_runtime_control"],
+        learning_stats: state.learning_stats,
+        consolidation: {
+          learning_enabled: false,
+          promoted_atoms: [],
+          promoted_edges: [],
+          promoted_capsule: null,
+          dropped: [],
+          warnings: ["consolidation_disabled_by_runtime_control"]
+        }
+      };
     }
 
     let consolidation;
     try {
+      this._applyPromotionLimit(state, persistenceWarnings);
       consolidation = this.pipeline.consolidateSession({
         state,
         memoryStore: this.memoryStore,
@@ -308,6 +377,7 @@ export class CodexMemoryAdapter {
       status: (consolidation.warnings.length > 0 || persistenceWarnings.length > 0) ? "degraded" : "ok",
       learning_enqueued: learningEnqueued,
       warnings: [...consolidation.warnings, ...persistenceWarnings],
+      learning_stats: state.learning_stats,
       consolidation
     };
   }
@@ -350,5 +420,44 @@ export class CodexMemoryAdapter {
     } catch (error) {
       warnings.push(`consolidation_persistence_failed:${String(error)}`);
     }
+  }
+
+  _applyPromotionLimit(state, warnings) {
+    const maxSignals = this.runtimeControls.max_promoted_signals;
+    if (!Number.isInteger(maxSignals) || maxSignals < 0) {
+      return;
+    }
+
+    const current = Array.isArray(state.signal_buffer) ? state.signal_buffer : [];
+    if (current.length <= maxSignals) {
+      return;
+    }
+
+    const dropped = current.length - maxSignals;
+    state.signal_buffer = current.slice(dropped);
+    warnings.push(`signal_buffer_trimmed_by_runtime_control:${dropped}`);
+  }
+
+  _buildContextPackAudit(contextPack) {
+    if (!contextPack) {
+      return null;
+    }
+
+    return {
+      pack_id: contextPack.id,
+      included: (contextPack.pack_items ?? []).map((item) => ({
+        memory_id: item.memory_id,
+        memory_type: item.memory_type,
+        atom_type: item.atom_type ?? null,
+        section: item.section,
+        why_included: item.provenance?.why_included ?? []
+      })),
+      dropped: (contextPack.drop_reasons ?? []).map((item) => ({
+        memory_id: item.memory_id ?? null,
+        reason: item.reason ?? "unknown",
+        stage: item.stage ?? "unknown",
+        section: item.section ?? null
+      }))
+    };
   }
 }

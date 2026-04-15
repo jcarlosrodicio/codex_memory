@@ -6,6 +6,8 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { LocalMemoryStore } from "../src/index.mjs";
 
+const nodeBin = process.execPath;
+
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
 }
@@ -18,7 +20,7 @@ test("SPEC-025 local store default path is stable and independent from workspace
     "console.log(store.getRootDir());"
   ].join("");
 
-  const result = spawnSync("node", ["--input-type=module", "-e", script], {
+  const result = spawnSync(nodeBin, ["--input-type=module", "-e", script], {
     cwd: path.resolve(path.dirname(new URL(import.meta.url).pathname), "../.."),
     env: {
       ...process.env,
@@ -174,4 +176,169 @@ test("SPEC-025 local store persists promoted atoms/edges/capsules and rebuilds i
   const typeIndex = await readJson(paths.indexes.type);
   assert.ok(scopeIndex["repo::repo-a"].includes("atom-1"));
   assert.ok(typeIndex.MemoryAtom.includes("atom-1"));
+});
+
+test("SPEC-025 local store analyzes duplicates and noise, compacts safely, and rebuilds indexes idempotently", async () => {
+  const rootDir = await mkdtemp(path.join(tmpdir(), "codex-memory-store-compact-"));
+  const store = new LocalMemoryStore({ rootDir });
+  const memoryStore = store.loadMemoryStore();
+
+  memoryStore.events.push(
+    {
+      id: "evt-1a",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test", session_ref: "s-1" },
+      event_type: "BEFORE_PROMPT",
+      occurred_at: "2026-04-14T10:00:00.000Z",
+      captured_at: "2026-04-14T10:00:01.000Z",
+      payload: { prompt_excerpt: "You are a helpful assistant." }
+    },
+    {
+      id: "evt-1b",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test", session_ref: "s-1" },
+      event_type: "BEFORE_PROMPT",
+      occurred_at: "2026-04-14T10:00:00.000Z",
+      captured_at: "2026-04-14T10:00:02.000Z",
+      payload: { prompt_excerpt: "You are a helpful assistant." }
+    },
+    {
+      id: "evt-2",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test", session_ref: "s-2" },
+      event_type: "BEFORE_PROMPT",
+      occurred_at: "2026-04-14T10:05:00.000Z",
+      captured_at: "2026-04-14T10:05:01.000Z",
+      payload: { prompt_excerpt: "Always run node --test before finalize." }
+    }
+  );
+
+  memoryStore.atoms.push(
+    {
+      id: "atom-noise-a",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      atom_type: "fact",
+      content: "You are a helpful assistant",
+      confidence: 0.72,
+      created_at: "2026-04-14T10:10:00.000Z"
+    },
+    {
+      id: "atom-noise-b",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      atom_type: "fact",
+      content: "You are a helpful assistant",
+      confidence: 0.72,
+      created_at: "2026-04-14T10:10:01.000Z"
+    },
+    {
+      id: "atom-good",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      atom_type: "workflow",
+      content: "Always run node --test before finalize changes",
+      confidence: 0.91,
+      created_at: "2026-04-14T10:11:00.000Z"
+    }
+  );
+
+  memoryStore.edges.push(
+    {
+      id: "edge-a",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      edge_type: "related_to",
+      from_memory_id: "atom-good",
+      to_memory_id: "atom-noise-a",
+      confidence: 0.7,
+      created_at: "2026-04-14T10:12:00.000Z"
+    },
+    {
+      id: "edge-b",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      edge_type: "related_to",
+      from_memory_id: "atom-good",
+      to_memory_id: "atom-noise-a",
+      confidence: 0.7,
+      created_at: "2026-04-14T10:12:01.000Z"
+    },
+    {
+      id: "edge-orphan",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      edge_type: "related_to",
+      from_memory_id: "atom-good",
+      to_memory_id: "atom-missing",
+      confidence: 0.6,
+      created_at: "2026-04-14T10:12:02.000Z"
+    }
+  );
+
+  memoryStore.capsules.push(
+    {
+      id: "capsule-a",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      summary: "Session learned durable workflow",
+      source_memory_ids: ["atom-good"],
+      confidence: 0.9,
+      created_at: "2026-04-14T10:13:00.000Z"
+    },
+    {
+      id: "capsule-b",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      summary: "Session learned durable workflow",
+      source_memory_ids: ["atom-good"],
+      confidence: 0.9,
+      created_at: "2026-04-14T10:13:01.000Z"
+    }
+  );
+
+  store.rewriteCanonicalArtifact("events", memoryStore.events);
+  store.rewriteCanonicalArtifact("atoms", memoryStore.atoms);
+  store.rewriteCanonicalArtifact("edges", memoryStore.edges);
+  store.rewriteCanonicalArtifact("capsules", memoryStore.capsules);
+  store.rebuildIndexes(memoryStore);
+
+  const analysis = store.analyzeArtifacts();
+  assert.equal(analysis.duplicate_counts.events, 1);
+  assert.equal(analysis.duplicate_counts.atoms, 1);
+  assert.equal(analysis.duplicate_counts.edges, 1);
+  assert.equal(analysis.duplicate_counts.capsules, 1);
+  assert.equal(analysis.noise_counts.atoms, 2);
+  assert.equal(analysis.orphan_counts.edges, 1);
+  assert.equal(analysis.noise_reason_counts.atoms.generic_system_scaffolding, 2);
+
+  const compacted = store.compactArtifacts({ apply: true });
+  assert.equal(compacted.applied, true);
+  assert.equal(compacted.removed.events, 1);
+  assert.equal(compacted.removed.atoms, 2);
+  assert.equal(compacted.removed.edges, 3);
+  assert.equal(compacted.removed.capsules, 1);
+  assert.equal(compacted.removed_breakdown.edges.duplicates, 1);
+  assert.equal(compacted.removed_breakdown.edges.orphans, 2);
+
+  const reloaded = store.loadMemoryStore();
+  assert.equal(reloaded.events.length, 2);
+  assert.equal(reloaded.atoms.length, 1);
+  assert.equal(reloaded.edges.length, 0);
+  assert.equal(reloaded.capsules.length, 1);
+  assert.equal(reloaded.atoms[0].id, "atom-good");
+
+  const paths = store.getArtifactsPath();
+  const typeIndex = await readJson(paths.indexes.type);
+  assert.ok(typeIndex.MemoryAtom.includes("atom-good"));
+  assert.ok(!typeIndex.MemoryAtom.includes("atom-noise-a"));
+
+  const secondPass = store.compactArtifacts({ apply: true });
+  assert.deepEqual(secondPass.removed, {
+    events: 0,
+    atoms: 0,
+    edges: 0,
+    capsules: 0
+  });
+  assert.equal(secondPass.analysis_after.orphan_counts.edges, 0);
 });

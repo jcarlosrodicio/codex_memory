@@ -1,30 +1,30 @@
 # Architecture Overview
 
-`codex-memory` is designed as a **memory engine** with a **Codex adapter**, not as a one-off plugin.
+`codex-memory` is designed as a reusable memory engine with a Codex adapter, not as a one-off plugin. The runtime is local-first, deterministic by default, and structured so that persistence, retrieval, injection, and operational tooling remain inspectable.
 
 ## System shape
 
-The architecture is intentionally split into three layers:
+The architecture is split into three layers:
 
-1. **Memory core**
-   - canonical data model
-   - storage and schema versioning
-   - retrieval and ranking
+1. Memory core
+   - canonical memory model
+   - store layout and schema versioning
+   - deterministic retrieval and graph expansion
    - token budgeting and pack building
+   - session learning and promotion quality rules
 
-2. **Adapter layer**
-   - agent-specific hooks
-   - session lifecycle integration
-   - input/output transformations for the host runtime
+2. Adapter layer
+   - Codex lifecycle hooks
+   - host-event normalization
+   - runtime controls and safe degradation
+   - local persistence activation
 
-3. **Operational layer**
-   - audit and inspection commands
-   - replay and benchmark tooling
-   - quality gates and release checks
+3. Operational layer
+   - inspection and audit commands
+   - benchmark and quality-gates tooling
+   - store analysis and compaction
 
 ## Package boundaries
-
-Target package layout:
 
 ```text
 core/
@@ -34,77 +34,99 @@ cli/
 
 Boundary ownership:
 
-- `core/` owns memory-domain logic, storage contracts, retrieval orchestration, and pack building.
-- `adapters/codex/` owns Codex lifecycle integration and host normalization only.
-- `cli/` owns inspection/replay operational surfaces that consume persisted artifacts.
+- `core/` owns the memory-domain behavior.
+- `adapters/codex/` owns Codex-specific runtime wiring only.
+- `cli/` owns operator commands over canonical artifacts.
 
-Adapter layer exclusion:
+The CLI consumes the same canonical state as the runtime. It does not redefine memory semantics; it exposes them.
 
-- Storage policy and retrieval policy stay in `core/`, not in `adapters/codex/`.
+## Canonical memory objects
 
-## Core memory objects
+The engine revolves around five objects:
 
-The engine revolves around five canonical objects:
+- `MemoryEvent`: raw session signal
+- `MemoryAtom`: smallest durable reusable memory
+- `MemoryEdge`: relationship between memory objects
+- `MemoryCapsule`: compressed session-level summary
+- `ContextPack`: bounded payload injected into the next prompt
 
-- `MemoryEvent` — raw signal captured from a session
-- `MemoryAtom` — smallest durable reusable fact, rule, or preference
-- `MemoryEdge` — typed relationship between memory objects
-- `MemoryCapsule` — compressed summary for a session or scope
-- `ContextPack` — bounded payload injected into the next prompt
-
-These objects are defined in the specs as the public model the whole project must preserve.
+These remain the public model across runtime, inspection, and benchmarks.
 
 ## Retrieval strategy
 
-The repository adopts a **cheap-first** retrieval model:
+The retrieval path is cheap-first and deterministic:
 
 1. filter by scope,
-2. rank with lexical retrieval,
+2. rank lexically,
 3. expand through graph relations when useful,
 4. query the semantic backend only if enabled,
 5. assemble a bounded `ContextPack`.
 
-This keeps the default path predictable, fast, and dependency-light while still leaving room for more capable semantic retrieval.
+Semantic retrieval is optional. The zero-deps path must stay useful and stable when semantic mode is `off`.
 
-Implementation priority matters:
+## Learning pipeline
 
-- lexical retrieval and graph expansion are part of the zero-dependency core,
-- semantic retrieval is intentionally deferred until after the base product is working, measurable, and easy to install.
+The learning pipeline is intentionally conservative:
 
-## Why graph is core
+1. hook events are normalized into `MemoryEvent`s,
+2. candidate signals are extracted from prompt/response excerpts,
+3. a memory-quality policy rejects generic scaffolding and trivial fragments,
+4. the consolidator promotes only durable candidates above the confidence threshold,
+5. the store persists canonical artifacts and rebuilds indexes.
 
-A memory engine is not only a search index. It must understand relationships such as:
+This is the key design change for MVP quality: durable promotion is not “anything extractable.” It is filtered to prefer memory that will plausibly save tokens or improve future work.
 
-- this rule applies to this repository,
-- this decision supersedes an older one,
-- this workaround caused this bugfix,
-- this preference comes from repeated user behavior.
+## Good memory vs noise
 
-Those relationships are first-class, which is why graph memory belongs in the core model rather than as an optional add-on.
+The repo now uses one shared deterministic policy for both promotion and store maintenance.
 
-## Why semantic search is optional
+Good durable memory usually looks like:
 
-Semantic retrieval can improve recall, but it is not required to deliver value in this product:
+- a recurring preference,
+- a concrete workflow or command,
+- a real constraint,
+- a stable decision,
+- a repo/runtime/config fact with useful specificity.
 
-- it can add operational complexity,
-- it may require local models or bundled runtimes,
-- it should not block basic functionality in a public reusable repository.
+Noise includes things like:
 
-For that reason, semantic search is modeled as a backend contract with an `off` mode that remains fully supported.
+- `You are a helpful assistant`
+- system scaffolding such as “your job is to…”
+- prompt boilerplate for UI title generation
+- review/meta artifacts like `::code-comment{...}`
+- incomplete bullet/header fragments
+- trivial or overly generic snippets with no durable value
 
-The design includes the semantic interface now so later work has a clean extension point, but the first public implementation should prove the value of the zero-dependency path before adding this optional layer.
+Using the same policy in both runtime promotion and `compact-store` keeps the product auditable and consistent.
+
+## Store maintenance architecture
+
+The local store remains file-based and canonical artifacts remain the source of truth. Secondary indexes are rebuildable caches.
+
+Store maintenance now follows this flow:
+
+1. analyze the current store,
+2. detect duplicate/equivalent artifacts in `events`, `atoms`, `edges`, and `capsules`,
+3. flag low-value durable artifacts via the memory-quality policy,
+4. compact only when the operator passes `--apply`,
+5. rewrite canonical artifacts,
+6. rebuild indexes from canonical state.
+
+This keeps cleanup explicit, deterministic, zero-deps, and safe to re-run.
 
 ## Design constraints
 
-- Local-first persistence
-- No mandatory external services
-- Scope isolation between global, repo, and session memory
-- Explainable prompt injection
-- Measurable token budgeting
-- Reusable engine interfaces across adapters
+- local-first persistence
+- no mandatory external services
+- deterministic default behavior
+- explainable prompt injection
+- explicit scope isolation
+- safe runtime degradation
+- explicit store maintenance for public-release hygiene
 
 ## Documentation map
 
-- Spec index: [`docs/specs/README.md`](./specs/README.md)
-- Public roadmap: [`docs/spec-roadmap.md`](./spec-roadmap.md)
-- Security and privacy: [`docs/security-and-privacy.md`](./security-and-privacy.md)
+- [docs/installation.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/installation.md)
+- [docs/security-and-privacy.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/security-and-privacy.md)
+- [docs/spec-roadmap.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/spec-roadmap.md)
+- [docs/specs/README.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/specs/README.md)

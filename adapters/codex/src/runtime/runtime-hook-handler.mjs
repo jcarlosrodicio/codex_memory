@@ -1,4 +1,5 @@
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -23,6 +24,30 @@ const HOOK_METHOD_MAP = Object.freeze({
   onBeforePrompt: "onBeforePrompt",
   onAfterResponse: "onAfterResponse",
   onSessionEnd: "onSessionEnd"
+});
+
+const RUNTIME_PROFILE_DEFAULTS = Object.freeze({
+  minimal: {
+    max_prompt_chars: 4000,
+    max_response_chars: 4000,
+    max_event_buffer: 80,
+    max_signal_buffer: 20,
+    max_promoted_signals: 12
+  },
+  standard: {
+    max_prompt_chars: 16000,
+    max_response_chars: 16000,
+    max_event_buffer: 200,
+    max_signal_buffer: 80,
+    max_promoted_signals: 40
+  },
+  strict: {
+    max_prompt_chars: 2400,
+    max_response_chars: 2400,
+    max_event_buffer: 60,
+    max_signal_buffer: 16,
+    max_promoted_signals: 8
+  }
 });
 
 function parseArgs(argv) {
@@ -67,6 +92,20 @@ function readStdin() {
 function boolFromEnv(name) {
   const value = String(process.env[name] ?? "").trim().toLowerCase();
   return value === "1" || value === "true" || value === "yes" || value === "on";
+}
+
+function intFromEnv(name, fallback) {
+  const raw = process.env[name];
+  if (raw == null || String(raw).trim().length === 0) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(String(raw), 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return fallback;
+  }
+
+  return parsed;
 }
 
 function defaultStorePath() {
@@ -127,7 +166,10 @@ function runtimePaths(storeRoot) {
 
   return {
     runtimeRoot,
-    sessionRoot
+    sessionRoot,
+    auditPath: path.join(runtimeRoot, "audit.ndjson"),
+    statusPath: path.join(runtimeRoot, "status.json"),
+    lastPackPath: path.join(runtimeRoot, "last-pack.json")
   };
 }
 
@@ -167,26 +209,84 @@ function persistSessionState(adapter, sessionRoot, sessionId) {
   writeFileSync(statePath, JSON.stringify(adapter.sessions.get(sessionId), null, 2), "utf8");
 }
 
-function normalizeControls(payload, fallback = {}) {
-  return {
+function resolveRuntimeControls(payload, fallback = {}) {
+  const requestedProfile = String(process.env.CODEX_MEMORY_RUNTIME_PROFILE ?? "standard").trim().toLowerCase();
+  const hasProfile = Object.prototype.hasOwnProperty.call(RUNTIME_PROFILE_DEFAULTS, requestedProfile);
+  const profile = hasProfile ? requestedProfile : "standard";
+  const profileDefaults = RUNTIME_PROFILE_DEFAULTS[profile];
+
+  const killSwitchMemory = boolFromEnv("CODEX_MEMORY_DISABLE_MEMORY");
+
+  const controls = {
     disable_injection: Boolean(
-      payload?.controls?.disable_injection
-      ?? payload?.user_visible_controls?.disable_injection
-      ?? fallback.disable_injection
-      ?? boolFromEnv("CODEX_MEMORY_DISABLE_INJECTION")
+      killSwitchMemory
+      || payload?.controls?.disable_injection
+      || payload?.user_visible_controls?.disable_injection
+      || fallback.disable_injection
+      || boolFromEnv("CODEX_MEMORY_DISABLE_INJECTION")
     ),
     disable_learning: Boolean(
-      payload?.controls?.disable_learning
-      ?? payload?.user_visible_controls?.disable_learning
-      ?? fallback.disable_learning
-      ?? boolFromEnv("CODEX_MEMORY_DISABLE_LEARNING")
+      killSwitchMemory
+      || payload?.controls?.disable_learning
+      || payload?.user_visible_controls?.disable_learning
+      || fallback.disable_learning
+      || boolFromEnv("CODEX_MEMORY_DISABLE_LEARNING")
     )
+  };
+
+  const phase_gates = {
+    disable_capture: boolFromEnv("CODEX_MEMORY_DISABLE_CAPTURE"),
+    disable_consolidation: boolFromEnv("CODEX_MEMORY_DISABLE_CONSOLIDATION")
+  };
+
+  const limits = {
+    max_prompt_chars: intFromEnv("CODEX_MEMORY_MAX_PROMPT_CHARS", profileDefaults.max_prompt_chars),
+    max_response_chars: intFromEnv("CODEX_MEMORY_MAX_RESPONSE_CHARS", profileDefaults.max_response_chars),
+    max_event_buffer: intFromEnv("CODEX_MEMORY_MAX_EVENT_BUFFER", profileDefaults.max_event_buffer),
+    max_signal_buffer: intFromEnv("CODEX_MEMORY_MAX_SIGNAL_BUFFER", profileDefaults.max_signal_buffer),
+    max_promoted_signals: intFromEnv("CODEX_MEMORY_MAX_PROMOTED_SIGNALS", profileDefaults.max_promoted_signals)
+  };
+
+  const reason_codes = [];
+  if (!hasProfile && requestedProfile.length > 0) {
+    reason_codes.push("runtime_profile_invalid_fallback_standard");
+  }
+  if (killSwitchMemory) {
+    reason_codes.push("memory_kill_switch_active");
+  }
+  if (phase_gates.disable_capture) {
+    reason_codes.push("capture_phase_disabled");
+  }
+  if (phase_gates.disable_consolidation) {
+    reason_codes.push("consolidation_phase_disabled");
+  }
+
+  return {
+    profile,
+    controls,
+    phase_gates,
+    limits,
+    reason_codes
   };
 }
 
-function normalizeForSessionStart(payload) {
+function withTrimmedText(text, maxChars, reasonCode) {
+  const value = String(text ?? "");
+  if (!Number.isInteger(maxChars) || maxChars <= 0 || value.length <= maxChars) {
+    return {
+      text: value,
+      warnings: []
+    };
+  }
+
+  return {
+    text: value.slice(0, maxChars),
+    warnings: [`${reasonCode}:${value.length - maxChars}`]
+  };
+}
+
+function normalizeForSessionStart(payload, runtimeControls) {
   const cwd = payload.cwd ?? process.cwd();
-  const controls = normalizeControls(payload);
 
   return {
     session_id: payload.session_id,
@@ -200,29 +300,58 @@ function normalizeForSessionStart(payload) {
       repository: payload.workspace?.repository ?? inferRepositoryId(cwd),
       branch: payload.workspace?.branch ?? inferGitBranch(cwd)
     },
-    controls
+    controls: runtimeControls.controls
   };
 }
 
-function normalizeForBeforePrompt(payload, controls) {
+function normalizeForBeforePrompt(payload, runtimeControls) {
+  const trimmed = withTrimmedText(
+    payload.prompt ?? payload.user_prompt ?? "",
+    runtimeControls.limits.max_prompt_chars,
+    "prompt_trimmed_by_runtime_limit"
+  );
+
   return {
-    session_id: payload.session_id,
-    occurred_at: payload.occurred_at ?? new Date().toISOString(),
-    prompt_id: payload.turn_id ?? `turn_${Date.now()}`,
-    prompt_text: payload.prompt ?? payload.user_prompt ?? "",
-    user_visible_controls: controls,
-    budget_hint: payload.budget_hint ?? null
+    normalized: {
+      session_id: payload.session_id,
+      occurred_at: payload.occurred_at ?? new Date().toISOString(),
+      prompt_id: payload.turn_id ?? `turn_${Date.now()}`,
+      prompt_text: trimmed.text,
+      user_visible_controls: runtimeControls.controls,
+      budget_hint: payload.budget_hint ?? null
+    },
+    warnings: trimmed.warnings
   };
 }
 
-function normalizeForStop(payload, controls) {
+function normalizeForStop(payload, runtimeControls) {
+  const trimmed = withTrimmedText(
+    payload.last_assistant_message ?? "",
+    runtimeControls.limits.max_response_chars,
+    "response_trimmed_by_runtime_limit"
+  );
+
   return {
-    session_id: payload.session_id,
-    occurred_at: payload.occurred_at ?? new Date().toISOString(),
-    prompt_id: payload.turn_id ?? `turn_${Date.now()}`,
-    assistant_response: payload.last_assistant_message ?? "",
-    response_stats: payload.response_stats ?? null,
-    controls
+    normalized: {
+      session_id: payload.session_id,
+      occurred_at: payload.occurred_at ?? new Date().toISOString(),
+      prompt_id: payload.turn_id ?? `turn_${Date.now()}`,
+      assistant_response: trimmed.text,
+      response_stats: payload.response_stats ?? null,
+      controls: runtimeControls.controls
+    },
+    warnings: trimmed.warnings
+  };
+}
+
+function mergeWarnings(adapterResult, extraWarnings = []) {
+  if (!adapterResult || typeof adapterResult !== "object" || extraWarnings.length === 0) {
+    return adapterResult;
+  }
+
+  return {
+    ...adapterResult,
+    warnings: [...new Set([...(Array.isArray(adapterResult.warnings) ? adapterResult.warnings : []), ...extraWarnings])]
   };
 }
 
@@ -269,30 +398,175 @@ function ensureLegacyOutput(result, hookName) {
   };
 }
 
-async function runRealCodexHook(hookName, adapter, payload, paths) {
-  const controls = normalizeControls(payload);
+function summarizeSafety(adapterResult) {
+  const warnings = Array.isArray(adapterResult?.warnings) ? adapterResult.warnings : [];
+  const persistenceWarnings = Array.isArray(adapterResult?.injection_metadata?.persistence_warnings)
+    ? adapterResult.injection_metadata.persistence_warnings
+    : [];
+
+  const all = [...warnings, ...persistenceWarnings];
+
+  return {
+    blocked_persistence_detected: all.some((item) => String(item).includes("persistence_blocked") || String(item).includes("blocked_by_redaction")),
+    redaction_detected: all.some((item) => String(item).includes("redacted") || String(item).includes("redaction")),
+    warning_count: all.length
+  };
+}
+
+function extractMetrics(adapterResult, runtimeControls) {
+  const metrics = adapterResult?.injection_metadata?.pack_metrics ?? null;
+
+  if (metrics) {
+    return metrics;
+  }
+
+  return {
+    pack_tokens: Number(adapterResult?.context_pack?.token_estimate ?? 0),
+    retrieved_count: Number(adapterResult?.context_pack_audit?.included?.length ?? 0),
+    dropped_count: Number(adapterResult?.context_pack_audit?.dropped?.length ?? 0),
+    token_savings_estimate: 0,
+    memory_enabled: !runtimeControls.controls.disable_injection,
+    semantic_mode: "off"
+  };
+}
+
+function countByReason(records = [], field = "reason") {
+  const counts = {};
+  for (const record of Array.isArray(records) ? records : []) {
+    const key = String(record?.[field] ?? "unknown");
+    counts[key] = Number(counts[key] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
+function buildAuditRecord({ hookName, payload, runtimeControls, adapterResult }) {
+  const now = new Date().toISOString();
+  const warnings = Array.isArray(adapterResult?.warnings) ? adapterResult.warnings : [];
+  const status = adapterResult?.status ?? (warnings.length > 0 ? "degraded" : "ok");
+
+  return {
+    audit_schema_version: "1",
+    id: `audit_${Date.now()}_${safeSessionRef(payload?.session_id ?? "unknown")}_${hookName}`,
+    occurred_at: now,
+    session_id: payload?.session_id ?? null,
+    hook_event_name: hookName,
+    runtime_profile: runtimeControls.profile,
+    controls: {
+      ...runtimeControls.controls,
+      ...runtimeControls.phase_gates
+    },
+    limits: runtimeControls.limits,
+    decision: {
+      status,
+      reason: adapterResult?.decision_summary?.reason ?? null,
+      inject_context: Boolean(adapterResult?.inject_context),
+      degraded: status === "degraded" || warnings.length > 0,
+      warnings
+    },
+    pack: {
+      pack_id: adapterResult?.context_pack?.pack_id ?? adapterResult?.context_pack_audit?.pack_id ?? null,
+      token_estimate: Number(adapterResult?.context_pack?.token_estimate ?? 0),
+      included: adapterResult?.context_pack_audit?.included ?? [],
+      dropped: adapterResult?.context_pack_audit?.dropped ?? []
+    },
+    metrics: extractMetrics(adapterResult, runtimeControls),
+    safety: summarizeSafety(adapterResult),
+    learning: {
+      signals_seen: Number(adapterResult?.learning_stats?.signals_seen ?? 0),
+      signals_promoted_to_buffer: Number(adapterResult?.learning_stats?.signals_promoted_to_buffer ?? 0),
+      rejected_by_quality_policy: Number(adapterResult?.learning_stats?.signals_rejected_by_quality_policy ?? 0),
+      filtered_reasons: adapterResult?.learning_stats?.dropped_by_reason ?? {},
+      promoted_atoms: Number(adapterResult?.consolidation?.promoted_atoms?.length ?? 0),
+      promoted_edges: Number(adapterResult?.consolidation?.promoted_edges?.length ?? 0),
+      promoted_capsule: Boolean(adapterResult?.consolidation?.promoted_capsule),
+      dropped_by_consolidation_reason: countByReason(adapterResult?.consolidation?.dropped)
+    }
+  };
+}
+
+function persistRuntimeAudit(paths, auditRecord) {
+  appendFileSync(paths.auditPath, `${JSON.stringify(auditRecord)}\n`, "utf8");
+
+  const status = {
+    status_schema_version: "1",
+    updated_at: auditRecord.occurred_at,
+    runtime_profile: auditRecord.runtime_profile,
+    last_hook: auditRecord.hook_event_name,
+    last_session_id: auditRecord.session_id,
+    health: auditRecord.decision.degraded ? "degraded" : "ok",
+    memory_enabled: Boolean(auditRecord.metrics.memory_enabled),
+    learning_enabled: !auditRecord.controls.disable_learning,
+    semantic_mode: auditRecord.metrics.semantic_mode ?? "off",
+    metrics: {
+      pack_tokens: Number(auditRecord.metrics.pack_tokens ?? 0),
+      retrieved_count: Number(auditRecord.metrics.retrieved_count ?? 0),
+      dropped_count: Number(auditRecord.metrics.dropped_count ?? 0),
+      token_savings_estimate: Number(auditRecord.metrics.token_savings_estimate ?? 0)
+    },
+    safety: auditRecord.safety,
+    audit_last_updated_at: auditRecord.occurred_at
+  };
+
+  writeFileSync(paths.statusPath, JSON.stringify(status, null, 2), "utf8");
+
+  if (auditRecord.hook_event_name === "UserPromptSubmit") {
+    writeFileSync(paths.lastPackPath, JSON.stringify({
+      pack_schema_version: "1",
+      updated_at: auditRecord.occurred_at,
+      session_id: auditRecord.session_id,
+      runtime_profile: auditRecord.runtime_profile,
+      decision_reason: auditRecord.decision.reason,
+      metrics: status.metrics,
+      pack: auditRecord.pack,
+      safety: auditRecord.safety
+    }, null, 2), "utf8");
+  }
+}
+
+async function runRealCodexHook(hookName, adapter, payload, runtimeControls) {
+  const controlWarnings = [...runtimeControls.reason_codes];
 
   if (hookName === "SessionStart") {
-    const result = adapter.onSessionStart(normalizeForSessionStart(payload));
-    return toCodexHookOutput(hookName, result);
+    const result = mergeWarnings(adapter.onSessionStart(normalizeForSessionStart(payload, runtimeControls)), controlWarnings);
+    return {
+      output: toCodexHookOutput(hookName, result),
+      adapterResult: result
+    };
   }
 
   if (hookName === "UserPromptSubmit") {
     if (!adapter.sessions.has(payload.session_id)) {
-      adapter.onSessionStart(normalizeForSessionStart(payload));
+      adapter.onSessionStart(normalizeForSessionStart(payload, runtimeControls));
     }
 
-    const beforePrompt = await adapter.onBeforePrompt(normalizeForBeforePrompt(payload, controls));
-    return toCodexHookOutput(hookName, beforePrompt);
+    const normalized = normalizeForBeforePrompt(payload, runtimeControls);
+    const beforePrompt = mergeWarnings(
+      await adapter.onBeforePrompt(normalized.normalized),
+      [...controlWarnings, ...normalized.warnings]
+    );
+
+    return {
+      output: toCodexHookOutput(hookName, beforePrompt),
+      adapterResult: beforePrompt
+    };
   }
 
   if (hookName === "Stop") {
     if (!adapter.sessions.has(payload.session_id)) {
-      adapter.onSessionStart(normalizeForSessionStart(payload));
+      adapter.onSessionStart(normalizeForSessionStart(payload, runtimeControls));
     }
 
-    const stop = adapter.onStop(normalizeForStop(payload, controls));
-    return toCodexHookOutput(hookName, stop);
+    const normalized = normalizeForStop(payload, runtimeControls);
+    const stop = mergeWarnings(
+      adapter.onStop(normalized.normalized),
+      [...controlWarnings, ...normalized.warnings]
+    );
+
+    return {
+      output: toCodexHookOutput(hookName, stop),
+      adapterResult: stop
+    };
   }
 
   throw new Error(`Unsupported real hook: ${hookName}`);
@@ -346,6 +620,7 @@ export async function runHookRuntime(argv = process.argv) {
   }
 
   const storeRoot = path.resolve(args.storePath ?? defaultStorePath());
+  const runtimeControls = resolveRuntimeControls(payload);
 
   let store;
   let memoryStore;
@@ -368,7 +643,16 @@ export async function runHookRuntime(argv = process.argv) {
 
   const adapter = new CodexMemoryAdapter({
     memoryStore,
-    persistence: store ?? null
+    persistence: store ?? null,
+    runtime_controls: {
+      disable_capture: runtimeControls.phase_gates.disable_capture,
+      disable_consolidation: runtimeControls.phase_gates.disable_consolidation,
+      max_promoted_signals: runtimeControls.limits.max_promoted_signals
+    },
+    pipeline_options: {
+      maxEventBuffer: runtimeControls.limits.max_event_buffer,
+      maxSignalBuffer: runtimeControls.limits.max_signal_buffer
+    }
   });
 
   const sessionId = payload?.session_id ?? null;
@@ -376,12 +660,16 @@ export async function runHookRuntime(argv = process.argv) {
   restoreSessionState(adapter, paths.sessionRoot, sessionId);
 
   let output;
+  let adapterResult;
   try {
     if (["SessionStart", "UserPromptSubmit", "Stop"].includes(args.hook)) {
-      output = await runRealCodexHook(args.hook, adapter, payload, paths);
+      const execution = await runRealCodexHook(args.hook, adapter, payload, runtimeControls);
+      output = execution.output;
+      adapterResult = execution.adapterResult;
     } else {
       const legacyResult = await runLegacyHook(methodName, adapter, payload);
       output = ensureLegacyOutput(legacyResult, args.hook);
+      adapterResult = legacyResult;
     }
   } catch (error) {
     output = ["SessionStart", "UserPromptSubmit", "Stop"].includes(args.hook)
@@ -393,6 +681,11 @@ export async function runHookRuntime(argv = process.argv) {
         status: "degraded",
         warnings: [`hook_execution_failed:${String(error)}`]
       };
+
+    adapterResult = {
+      status: "degraded",
+      warnings: [`hook_execution_failed:${String(error)}`]
+    };
   }
 
   persistSessionState(adapter, paths.sessionRoot, sessionId);
@@ -409,6 +702,17 @@ export async function runHookRuntime(argv = process.argv) {
     } else {
       output.warnings = [...startupWarnings, ...(Array.isArray(output.warnings) ? output.warnings : [])];
     }
+  }
+
+  if (["SessionStart", "UserPromptSubmit", "Stop"].includes(args.hook)) {
+    const auditedResult = mergeWarnings(adapterResult ?? {}, startupWarnings);
+    const auditRecord = buildAuditRecord({
+      hookName: args.hook,
+      payload,
+      runtimeControls,
+      adapterResult: auditedResult
+    });
+    persistRuntimeAudit(paths, auditRecord);
   }
 
   process.stdout.write(`${JSON.stringify(output)}\n`);

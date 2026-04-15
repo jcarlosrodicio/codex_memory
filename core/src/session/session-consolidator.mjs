@@ -12,6 +12,7 @@ import {
   nowIso,
   signatureForCandidate
 } from "./utils.mjs";
+import { assessMemoryQuality } from "./memory-quality-policy.mjs";
 
 function candidateSort(a, b) {
   if (b.confidence !== a.confidence) {
@@ -134,6 +135,18 @@ export class SessionConsolidator {
         dropped.push({
           candidate_id: candidate.id,
           reason: "low_confidence_not_promoted"
+        });
+        continue;
+      }
+
+      const quality = assessMemoryQuality(candidate.content, {
+        atomType: candidate.atom_type
+      });
+      if (!quality.accepted) {
+        dropped.push({
+          candidate_id: candidate.id,
+          reason: "rejected_by_quality_policy",
+          quality_reason: quality.reason
         });
         continue;
       }

@@ -1,6 +1,8 @@
 import {
+  accessSync,
   existsSync,
   mkdirSync,
+  realpathSync,
   readFileSync,
   writeFileSync
 } from "node:fs";
@@ -9,6 +11,11 @@ import path from "node:path";
 
 const DEFAULT_PLUGIN_ROOT = "$HOME/.codex/plugins/codex-memory";
 const HOOK_ENTRYPOINT_SUFFIX = "/adapters/codex/bin/codex-memory-hook.mjs";
+const COMMON_NODE_BINARIES = [
+  "/opt/homebrew/bin/node",
+  "/usr/local/bin/node",
+  "/usr/bin/node"
+];
 
 function stableStringify(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
@@ -34,18 +41,113 @@ function codexMemoryCommandMarker(pluginRoot = DEFAULT_PLUGIN_ROOT) {
   return `${pluginRoot}${HOOK_ENTRYPOINT_SUFFIX}`;
 }
 
-function codexMemoryCommand(pluginRoot, eventName) {
-  return `node \"${pluginRoot}${HOOK_ENTRYPOINT_SUFFIX}\" ${eventName}`;
+function shellQuote(value) {
+  return `"${String(value ?? "").replace(/(["\\`])/g, "\\$1")}"`;
 }
 
-function codexMemoryGroups(pluginRoot = DEFAULT_PLUGIN_ROOT) {
+function safeRealpath(filePath) {
+  try {
+    return realpathSync(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function isExecutable(filePath) {
+  if (!filePath) {
+    return false;
+  }
+
+  try {
+    accessSync(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function nodePathCandidatesFromEnv() {
+  const pathValue = String(process.env.PATH ?? "");
+  if (!pathValue) {
+    return [];
+  }
+
+  return pathValue
+    .split(path.delimiter)
+    .filter(Boolean)
+    .map((segment) => path.join(segment, "node"));
+}
+
+function scoreNodePath(candidatePath, resolvedExecPath) {
+  if (!candidatePath) {
+    return -1;
+  }
+
+  let score = 0;
+  if (candidatePath === resolvedExecPath) {
+    score += 2;
+  }
+  if (!candidatePath.includes("/Cellar/")) {
+    score += 4;
+  }
+  if (candidatePath.includes("/bin/node")) {
+    score += 2;
+  }
+  if (candidatePath.startsWith("/opt/homebrew/") || candidatePath.startsWith("/usr/local/")) {
+    score += 1;
+  }
+
+  return score;
+}
+
+function resolveHookNodePath(explicitNodePath = null) {
+  const requested = String(explicitNodePath ?? process.env.CODEX_MEMORY_NODE_BIN ?? "").trim();
+  if (requested.length > 0) {
+    return requested;
+  }
+
+  const execPath = String(process.execPath ?? "").trim();
+  const execRealpath = safeRealpath(execPath);
+
+  const candidates = [
+    ...COMMON_NODE_BINARIES,
+    ...nodePathCandidatesFromEnv(),
+    execPath
+  ].filter(Boolean);
+
+  const matchingCandidates = [...new Set(candidates)].filter((candidatePath) => {
+    if (!isExecutable(candidatePath)) {
+      return false;
+    }
+
+    if (!execRealpath) {
+      return true;
+    }
+
+    return safeRealpath(candidatePath) === execRealpath;
+  });
+
+  if (matchingCandidates.length === 0) {
+    return execPath || "node";
+  }
+
+  return matchingCandidates
+    .slice()
+    .sort((left, right) => scoreNodePath(right, execPath) - scoreNodePath(left, execPath))[0];
+}
+
+function codexMemoryCommand(pluginRoot, eventName, nodePath) {
+  return `${shellQuote(nodePath)} ${shellQuote(`${pluginRoot}${HOOK_ENTRYPOINT_SUFFIX}`)} ${eventName}`;
+}
+
+function codexMemoryGroups(pluginRoot = DEFAULT_PLUGIN_ROOT, nodePath = resolveHookNodePath()) {
   return {
     SessionStart: {
       matcher: ".*",
       hooks: [
         {
           type: "command",
-          command: codexMemoryCommand(pluginRoot, "SessionStart"),
+          command: codexMemoryCommand(pluginRoot, "SessionStart", nodePath),
           timeout: 20
         }
       ]
@@ -55,7 +157,7 @@ function codexMemoryGroups(pluginRoot = DEFAULT_PLUGIN_ROOT) {
       hooks: [
         {
           type: "command",
-          command: codexMemoryCommand(pluginRoot, "UserPromptSubmit"),
+          command: codexMemoryCommand(pluginRoot, "UserPromptSubmit", nodePath),
           timeout: 20
         }
       ]
@@ -64,7 +166,7 @@ function codexMemoryGroups(pluginRoot = DEFAULT_PLUGIN_ROOT) {
       hooks: [
         {
           type: "command",
-          command: codexMemoryCommand(pluginRoot, "Stop"),
+          command: codexMemoryCommand(pluginRoot, "Stop", nodePath),
           timeout: 20
         }
       ]
@@ -311,9 +413,10 @@ function stripCodexMemoryHooks(groups, marker) {
 
 export function mergeGlobalHooksConfig(existingConfig, options = {}) {
   const pluginRoot = options.pluginRoot ?? DEFAULT_PLUGIN_ROOT;
+  const nodePath = resolveHookNodePath(options.nodePath);
   const marker = codexMemoryCommandMarker(pluginRoot);
   const base = ensureHooksRoot(clone(existingConfig));
-  const desired = codexMemoryGroups(pluginRoot);
+  const desired = codexMemoryGroups(pluginRoot, nodePath);
 
   const warnings = [];
 
@@ -334,10 +437,11 @@ export function installGlobalHooks(options = {}) {
   const hooksPath = path.resolve(options.hooksPath ?? defaultGlobalHooksPath());
   const configPath = path.resolve(options.configPath ?? defaultCodexConfigPath());
   const pluginRoot = options.pluginRoot ?? DEFAULT_PLUGIN_ROOT;
+  const nodePath = resolveHookNodePath(options.nodePath);
   const dryRun = Boolean(options.dryRun);
 
   const existing = readHooksConfig(hooksPath);
-  const merged = mergeGlobalHooksConfig(existing, { pluginRoot });
+  const merged = mergeGlobalHooksConfig(existing, { pluginRoot, nodePath });
   const existingConfigToml = readConfigToml(configPath);
   const configUpdate = ensureCodexHooksFeatureInToml(existingConfigToml);
 
@@ -356,6 +460,7 @@ export function installGlobalHooks(options = {}) {
     hooks_path: hooksPath,
     config_path: configPath,
     plugin_root: pluginRoot,
+    node_path: nodePath,
     dry_run: dryRun,
     hooks_status: "hooks_installed_or_updated",
     feature_flag_status: configUpdate.status,

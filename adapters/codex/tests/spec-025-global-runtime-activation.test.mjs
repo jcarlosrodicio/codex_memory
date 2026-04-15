@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -8,6 +9,9 @@ import {
   installGlobalHooks,
   mergeGlobalHooksConfig
 } from "../src/runtime/global-hooks-installer.mjs";
+
+const nodeBin = "/stable/bin/node";
+const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../..");
 
 function extractCommands(config, eventName) {
   const eventGroups = config.hooks?.[eventName] ?? [];
@@ -26,7 +30,8 @@ test("SPEC-025 global activation creates ~/.codex/hooks-style config when missin
   const result = installGlobalHooks({
     hooksPath,
     configPath,
-    pluginRoot: "$HOME/.codex/plugins/codex-memory"
+    pluginRoot: "$HOME/.codex/plugins/codex-memory",
+    nodePath: nodeBin
   });
 
   assert.equal(result.hooks_path, hooksPath);
@@ -38,13 +43,13 @@ test("SPEC-025 global activation creates ~/.codex/hooks-style config when missin
 
   const written = JSON.parse(await readFile(hooksPath, "utf8"));
   assert.ok(
-    extractCommands(written, "SessionStart").some((command) => command.includes("codex-memory-hook.mjs\" SessionStart"))
+    extractCommands(written, "SessionStart").some((command) => command.includes(`"${nodeBin}" "$HOME/.codex/plugins/codex-memory/adapters/codex/bin/codex-memory-hook.mjs" SessionStart`))
   );
   assert.ok(
-    extractCommands(written, "UserPromptSubmit").some((command) => command.includes("codex-memory-hook.mjs\" UserPromptSubmit"))
+    extractCommands(written, "UserPromptSubmit").some((command) => command.includes(`"${nodeBin}" "$HOME/.codex/plugins/codex-memory/adapters/codex/bin/codex-memory-hook.mjs" UserPromptSubmit`))
   );
   assert.ok(
-    extractCommands(written, "Stop").some((command) => command.includes("codex-memory-hook.mjs\" Stop"))
+    extractCommands(written, "Stop").some((command) => command.includes(`"${nodeBin}" "$HOME/.codex/plugins/codex-memory/adapters/codex/bin/codex-memory-hook.mjs" Stop`))
   );
 
   const configToml = await readFile(configPath, "utf8");
@@ -102,7 +107,8 @@ test("SPEC-025 global activation merges safely and preserves non-codex-memory ho
   const result = installGlobalHooks({
     hooksPath,
     configPath,
-    pluginRoot: "$HOME/.codex/plugins/codex-memory"
+    pluginRoot: "$HOME/.codex/plugins/codex-memory",
+    nodePath: nodeBin
   });
 
   const merged = JSON.parse(await readFile(hooksPath, "utf8"));
@@ -112,7 +118,7 @@ test("SPEC-025 global activation merges safely and preserves non-codex-memory ho
   assert.ok(extractCommands(merged, "Notification").includes("echo unrelated-event"));
 
   assert.ok(
-    extractCommands(merged, "SessionStart").some((command) => command.includes("codex-memory-hook.mjs\" SessionStart"))
+    extractCommands(merged, "SessionStart").some((command) => command.includes(`"${nodeBin}" "$HOME/.codex/plugins/codex-memory/adapters/codex/bin/codex-memory-hook.mjs" SessionStart`))
   );
   assert.ok(result.warnings.length >= 0);
 
@@ -141,7 +147,8 @@ test("SPEC-025 global activation removes stale codex-memory entries before appen
   };
 
   const { config, warnings } = mergeGlobalHooksConfig(existing, {
-    pluginRoot: "$HOME/.codex/plugins/codex-memory"
+    pluginRoot: "$HOME/.codex/plugins/codex-memory",
+    nodePath: nodeBin
   });
 
   const commands = extractCommands(config, "SessionStart").filter((command) => command.includes("codex-memory-hook.mjs"));
@@ -229,7 +236,8 @@ test("SPEC-025 global installer keeps config file untouched on ambiguous config 
   const result = installGlobalHooks({
     hooksPath,
     configPath,
-    pluginRoot: "$HOME/.codex/plugins/codex-memory"
+    pluginRoot: "$HOME/.codex/plugins/codex-memory",
+    nodePath: nodeBin
   });
 
   const current = await readFile(configPath, "utf8");
@@ -246,12 +254,14 @@ test("SPEC-025 global installer is idempotent across repeated runs", async () =>
   installGlobalHooks({
     hooksPath,
     configPath,
-    pluginRoot: "$HOME/.codex/plugins/codex-memory"
+    pluginRoot: "$HOME/.codex/plugins/codex-memory",
+    nodePath: nodeBin
   });
   installGlobalHooks({
     hooksPath,
     configPath,
-    pluginRoot: "$HOME/.codex/plugins/codex-memory"
+    pluginRoot: "$HOME/.codex/plugins/codex-memory",
+    nodePath: nodeBin
   });
 
   const hooksJson = JSON.parse(await readFile(hooksPath, "utf8"));
@@ -264,4 +274,53 @@ test("SPEC-025 global installer is idempotent across repeated runs", async () =>
 
   const codexHooksEnabledKeys = configToml.match(/codex_hooks\s*=\s*true/g) ?? [];
   assert.equal(codexHooksEnabledKeys.length, 1);
+});
+
+test("SPEC-025 generated hook commands still run when PATH does not contain node", async () => {
+  const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-hook-command-no-path-"));
+  const { config } = mergeGlobalHooksConfig({ hooks: {} }, {
+    pluginRoot: repoRoot,
+    nodePath: process.execPath
+  });
+  const command = extractCommands(config, "SessionStart")[0];
+
+  const output = await new Promise((resolve, reject) => {
+    const child = spawn("/bin/sh", ["-lc", `${command} --store-path "${storePath}"`], {
+      cwd: repoRoot,
+      env: {
+        HOME: process.env.HOME,
+        PATH: "/usr/bin:/bin"
+      }
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`generated hook command failed (code=${code}): ${stderr}`));
+        return;
+      }
+
+      resolve(stdout);
+    });
+
+    child.stdin.write(JSON.stringify({
+      hook_event_name: "SessionStart",
+      session_id: "s-no-path",
+      cwd: repoRoot,
+      model: "gpt-5.4"
+    }));
+    child.stdin.end();
+  });
+
+  const parsed = JSON.parse(String(output).trim());
+  assert.equal(parsed.continue, true);
 });

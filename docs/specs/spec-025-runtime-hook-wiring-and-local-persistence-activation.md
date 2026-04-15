@@ -16,10 +16,10 @@ Runtime activation is treated as a bridge spec between the session pipeline and 
 
 - `.codex-plugin/plugin.json` plugin manifest metadata
 - `~/.codex/hooks.json` global Codex runtime hook wiring (recommended activation path)
-- `.codex/hooks.json` real Codex runtime hook wiring (repo-local)
 - `adapters/codex/bin/install-global-hooks.mjs` safe global hook installer/merger
 - `~/.codex/config.toml` `[features].codex_hooks = true` activation flag set by installer
 - Adapter runtime entry scripts or commands used by Codex hooks
+- installer-resolved Node executable path used by those commands
 - Local persisted artifacts for:
   - events
   - atoms
@@ -39,7 +39,9 @@ Runtime activation is treated as a bridge spec between the session pipeline and 
 
 ## Data flow
 
-Codex runtime hooks invoke adapter entrypoints during supported host events (`SessionStart`, `UserPromptSubmit`, `Stop`). Global activation via `~/.codex/hooks.json` keeps the plugin active across repositories; repo-local `.codex/hooks.json` remains a scoped fallback. The adapter maps host events into the internal pipeline lifecycle, delegates capture/injection/consolidation into the core, and flushes canonical durable artifacts to the local store.
+Codex runtime hooks invoke adapter entrypoints during supported host events (`SessionStart`, `UserPromptSubmit`, `Stop`). Global activation via `~/.codex/hooks.json` keeps the plugin active across repositories and is the single recommended path. The repository avoids shipping an active repo-local `.codex/hooks.json` to prevent duplicate execution when global hooks are already enabled. The adapter maps host events into the internal pipeline lifecycle, delegates capture/injection/consolidation into the core, and flushes canonical durable artifacts to the local store.
+
+To avoid real host failures such as `hook exited with code 127`, installer-generated commands must use an explicit Node executable path instead of assuming `node` is available in the runtime `PATH`.
 
 ## Fallback behavior
 
@@ -50,6 +52,7 @@ If a hook is unavailable or fails, the runtime must degrade explicitly without c
 - The plugin declares and wires the Codex lifecycle hooks required for real session execution.
 - A documented, non-destructive global activation path exists so hooks are active outside the `codex-memory` repository.
 - Global activation flow sets both hook registry and `codex_hooks` feature flag without requiring manual config edits in the normal case.
+- Global activation flow writes hook commands that remain executable even when the host surface does not expose `node` in `PATH`.
 - A real Codex session can produce observable local persisted artifacts without test-only scaffolding.
 - The persistence path and artifact layout are documented and stable enough for local verification.
 - Default local persistence path is stable and independent from workspace cwd (`~/.codex/plugins/codex-memory/data`).
@@ -57,6 +60,7 @@ If a hook is unavailable or fails, the runtime must degrade explicitly without c
 - `disable_learning=true` prevents durable atom/edge/capsule promotion during a real session.
 - Secret blocking and redaction still apply before durable writes.
 - Failure to wire or write is explicit and non-fatal.
+- The repository avoids dual activation layers that would execute the same hook chain twice.
 - The repository documents the difference between:
   - plugin installation,
   - runtime activation,

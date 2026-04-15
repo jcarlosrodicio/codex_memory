@@ -47,6 +47,7 @@ try {
     hooks_path: result.hooks_path,
     config_path: result.config_path,
     plugin_root: result.plugin_root,
+    node_path: result.node_path,
     dry_run: result.dry_run,
     hooks_status: result.hooks_status,
     feature_flag_status: result.feature_flag_status,
