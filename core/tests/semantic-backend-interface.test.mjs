@@ -16,7 +16,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-012 defines semantic interface contract with optional modes and fallback semantics", async () => {
+test("defines semantic interface contract with optional modes and fallback semantics", async () => {
   const contract = await loadJson("core/contracts/semantic-backend-interface.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-012");
@@ -27,7 +27,7 @@ test("SPEC-012 defines semantic interface contract with optional modes and fallb
   assert.equal(contract.status, "scaffolding_for_mvp_zero_deps");
 });
 
-test("SPEC-012 semantic mode off preserves zero-deps retrieval flow", async () => {
+test("semantic mode off preserves zero-deps retrieval flow", async () => {
   const engine = new RetrievalEngine({
     semanticMode: "off",
     lexical_options: {
@@ -64,7 +64,7 @@ test("SPEC-012 semantic mode off preserves zero-deps retrieval flow", async () =
   assert.equal(result.context_pack.pack_items.length, 1);
 });
 
-test("SPEC-012 missing semantic backend in light mode degrades safely without breaking retrieval", async () => {
+test("missing semantic backend in light mode degrades safely without breaking retrieval", async () => {
   const engine = new RetrievalEngine({
     semanticMode: "light",
     lexical_options: {
@@ -101,7 +101,7 @@ test("SPEC-012 missing semantic backend in light mode degrades safely without br
   assert.equal(result.context_pack.pack_items.length, 1);
 });
 
-test("SPEC-012 semantic adapter contract supports healthy search results without mandatory backend", async () => {
+test("semantic adapter contract supports healthy search results without mandatory backend", async () => {
   class FakeSemanticBackend extends SemanticBackend {
     getCapabilities() {
       return { available: true };

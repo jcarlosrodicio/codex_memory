@@ -1,6 +1,6 @@
 # Security and Privacy
 
-`codex-memory` persists information extracted from agent conversations, so safety is part of the product surface.
+`codex-memory` persists information extracted from agent conversations, so safety is part of the everyday product surface, not a separate add-on.
 
 ## Security goals
 
@@ -85,7 +85,7 @@ This is especially useful when historical runtime behavior created duplicate art
 
 ## Public repository expectations
 
-Because this is a public repository:
+For a user or maintainer reading this repository:
 
 - docs must describe the real safety model, not an idealized future one,
 - examples must avoid real secrets,

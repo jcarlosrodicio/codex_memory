@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-003 defines exactly four lifecycle hooks with required sections", async () => {
+test("defines exactly four lifecycle hooks with required sections", async () => {
   const contracts = await loadJson("adapters/codex/contracts/codex-hook-contracts.json");
   const hookNames = Object.keys(contracts.lifecycle_hooks);
 
@@ -32,7 +32,7 @@ test("SPEC-003 defines exactly four lifecycle hooks with required sections", asy
   }
 });
 
-test("SPEC-003 session controls expose injection and learning toggles", async () => {
+test("session controls expose injection and learning toggles", async () => {
   const controls = await loadJson("adapters/codex/contracts/session-controls.json");
 
   assert.equal(controls.controls.disable_injection.type, "boolean");
@@ -41,7 +41,7 @@ test("SPEC-003 session controls expose injection and learning toggles", async ()
   assert.equal(controls.controls.disable_learning.scope, "session");
 });
 
-test("SPEC-003 defines adapter-to-core normalized boundary", async () => {
+test("defines adapter-to-core normalized boundary", async () => {
   const boundary = await loadJson("core/contracts/adapter-core-normalized-events.json");
 
   assert.deepEqual(boundary.normalized_event_contract.required_fields, [
@@ -59,7 +59,7 @@ test("SPEC-003 defines adapter-to-core normalized boundary", async () => {
   );
 });
 
-test("SPEC-003 installation contract is local-first and marketplace-ready", async () => {
+test("installation contract is local-first and marketplace-ready", async () => {
   const pluginManifest = await loadJson(".codex-plugin/plugin.json");
 
   assert.equal(pluginManifest.distribution.default_path, "local_plugin_install");

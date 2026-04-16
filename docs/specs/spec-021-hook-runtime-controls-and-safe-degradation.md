@@ -15,6 +15,7 @@ Hook execution is controlled through explicit runtime profiles, kill switches, a
 ## Public interfaces or types affected
 
 - Hook runtime profile controls such as `minimal`, `standard`, and `strict`
+- Runtime hook enablement flag (`hooks_enabled`, default true)
 - Global and per-phase disable flags
 - Capture and promotion limits per session
 - Safe-degradation status and reason codes
@@ -23,6 +24,7 @@ Hook execution is controlled through explicit runtime profiles, kill switches, a
 ## Invariants and exclusions
 
 - Hooks must be disableable without editing source files.
+- Runtime hook execution defaults to enabled and must degrade safely when explicitly disabled.
 - The system must provide a global kill switch for memory or learning behavior.
 - Hook failure cannot corrupt durable memory stores.
 - Session-end fallback must still produce the minimum safe summary or status artifact when intermediate phases fail.

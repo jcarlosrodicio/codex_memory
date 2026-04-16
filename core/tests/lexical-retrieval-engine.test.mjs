@@ -12,7 +12,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-010 defines host-agnostic lexical retrieval with deterministic weighted scoring", async () => {
+test("defines host-agnostic lexical retrieval with deterministic weighted scoring", async () => {
   const contract = await loadJson("core/contracts/lexical-retrieval-engine.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-010");
@@ -29,7 +29,7 @@ test("SPEC-010 defines host-agnostic lexical retrieval with deterministic weight
   assert.equal(totalWeight, 1);
 });
 
-test("SPEC-010 lexical ranking combines lexical match with non-text signals", () => {
+test("lexical ranking combines lexical match with non-text signals", () => {
   const lexical = new LexicalRetrievalEngine({
     now: () => "2026-04-14T10:00:00.000Z"
   });
@@ -73,7 +73,7 @@ test("SPEC-010 lexical ranking combines lexical match with non-text signals", ()
   assert.ok(result.candidates[0].score_breakdown.recency > result.candidates[1].score_breakdown.recency);
 });
 
-test("SPEC-010 applies explicit scope and memory type filtering", () => {
+test("applies explicit scope and memory type filtering", () => {
   const lexical = new LexicalRetrievalEngine({
     now: () => "2026-04-14T10:00:00.000Z"
   });
@@ -138,7 +138,7 @@ test("SPEC-010 applies explicit scope and memory type filtering", () => {
   assert.ok(result.dropped.some((item) => item.memory_id === "capsule-filtered" && item.reason === "filtered_by_memory_type"));
 });
 
-test("SPEC-010 applies optional freshness filtering with max_age_days over updated_at/created_at", () => {
+test("applies optional freshness filtering with max_age_days over updated_at/created_at", () => {
   const lexical = new LexicalRetrievalEngine({
     now: () => "2026-04-14T10:00:00.000Z"
   });

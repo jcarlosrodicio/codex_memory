@@ -12,7 +12,7 @@ async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
 }
 
-test("SPEC-025 local store default path is stable and independent from workspace cwd", () => {
+test("local store default path is stable and independent from workspace cwd", () => {
   const fakeHome = path.join(tmpdir(), "codex-memory-fake-home");
   const script = [
     "import { LocalMemoryStore } from './core/src/index.mjs';",
@@ -37,7 +37,7 @@ test("SPEC-025 local store default path is stable and independent from workspace
   );
 });
 
-test("SPEC-025 local store initializes canonical artifacts and metadata", async () => {
+test("local store initializes canonical artifacts and metadata", async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "codex-memory-store-"));
   const store = new LocalMemoryStore({ rootDir });
   const paths = store.getArtifactsPath();
@@ -60,7 +60,7 @@ test("SPEC-025 local store initializes canonical artifacts and metadata", async 
   }
 });
 
-test("SPEC-025 local store applies redaction before event durable writes", async () => {
+test("local store applies redaction before event durable writes", async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "codex-memory-store-redaction-"));
   const store = new LocalMemoryStore({ rootDir });
   const memoryStore = store.loadMemoryStore();
@@ -107,7 +107,7 @@ test("SPEC-025 local store applies redaction before event durable writes", async
   assert.match(persistedEvent.payload.prompt_excerpt, /REDACTED_TOKEN/);
 });
 
-test("SPEC-025 local store persists promoted atoms/edges/capsules and rebuilds indexes", async () => {
+test("local store persists promoted atoms/edges/capsules and rebuilds indexes", async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "codex-memory-store-consolidation-"));
   const store = new LocalMemoryStore({ rootDir });
   const memoryStore = store.loadMemoryStore();
@@ -178,7 +178,7 @@ test("SPEC-025 local store persists promoted atoms/edges/capsules and rebuilds i
   assert.ok(typeIndex.MemoryAtom.includes("atom-1"));
 });
 
-test("SPEC-025 local store analyzes duplicates and noise, compacts safely, and rebuilds indexes idempotently", async () => {
+test("local store analyzes duplicates and noise, compacts safely, and rebuilds indexes idempotently", async () => {
   const rootDir = await mkdtemp(path.join(tmpdir(), "codex-memory-store-compact-"));
   const store = new LocalMemoryStore({ rootDir });
   const memoryStore = store.loadMemoryStore();

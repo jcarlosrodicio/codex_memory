@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-008 defines scope precedence in a single reusable contract", async () => {
+test("defines scope precedence in a single reusable contract", async () => {
   const policy = await loadJson("core/contracts/memory-scoping-policy.v1.json");
 
   assert.equal(policy.spec_id, "SPEC-008");
@@ -32,7 +32,7 @@ test("SPEC-008 defines scope precedence in a single reusable contract", async ()
   ]);
 });
 
-test("SPEC-008 defines explicit supersession and contradiction handling", async () => {
+test("defines explicit supersession and contradiction handling", async () => {
   const policy = await loadJson("core/contracts/memory-scoping-policy.v1.json");
   const conflictRules = policy.conflict_rules;
 
@@ -50,7 +50,7 @@ test("SPEC-008 defines explicit supersession and contradiction handling", async 
   );
 });
 
-test("SPEC-008 prevents cross-repository contamination and narrows scope on uncertainty", async () => {
+test("prevents cross-repository contamination and narrows scope on uncertainty", async () => {
   const policy = await loadJson("core/contracts/memory-scoping-policy.v1.json");
   const isolation = policy.cross_repository_isolation;
 

@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-005 defines the five canonical memory objects with explicit boundaries", async () => {
+test("defines the five canonical memory objects with explicit boundaries", async () => {
   const model = await loadJson("core/contracts/memory-model.canonical.v1.json");
 
   assert.equal(model.spec_id, "SPEC-005");
@@ -38,7 +38,7 @@ test("SPEC-005 defines the five canonical memory objects with explicit boundarie
   assert.equal(model.canonical_objects.ContextPack.explainable, true);
 });
 
-test("SPEC-005 makes required vs optional fields explicit per canonical object", async () => {
+test("makes required vs optional fields explicit per canonical object", async () => {
   const model = await loadJson("core/contracts/memory-model.canonical.v1.json");
 
   for (const [objectName, object] of Object.entries(model.canonical_objects)) {
@@ -48,7 +48,7 @@ test("SPEC-005 makes required vs optional fields explicit per canonical object",
   }
 });
 
-test("SPEC-005 enforces required identity, scope, and provenance fields", async () => {
+test("enforces required identity, scope, and provenance fields", async () => {
   const model = await loadJson("core/contracts/memory-model.canonical.v1.json");
 
   for (const [objectName, object] of Object.entries(model.canonical_objects)) {
@@ -67,7 +67,7 @@ test("SPEC-005 enforces required identity, scope, and provenance fields", async 
   }
 });
 
-test("SPEC-005 fixes the v1 durable MemoryAtom type taxonomy", async () => {
+test("fixes the v1 durable MemoryAtom type taxonomy", async () => {
   const model = await loadJson("core/contracts/memory-model.canonical.v1.json");
 
   assert.deepEqual(model.memory_atom_type_taxonomy_v1, [

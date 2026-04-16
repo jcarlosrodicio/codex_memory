@@ -72,7 +72,7 @@ async function invokeHook({ hook, payload, storePath }) {
   return JSON.parse(String(output).trim());
 }
 
-test("SPEC-019 quality-gates CLI evaluates release readiness evidence from benchmark + audit artifacts", async () => {
+test("quality-gates CLI evaluates release readiness evidence from benchmark + audit artifacts", async () => {
   const fixturePath = path.join(repoRoot, "adapters/codex/tests/fixtures/layer4-golden-path-session.json");
   const benchmarkCli = path.join(repoRoot, "cli/bin/codex-memory-benchmark.mjs");
   const gatesCli = path.join(repoRoot, "cli/bin/codex-memory-quality-gates.mjs");
@@ -88,7 +88,7 @@ test("SPEC-019 quality-gates CLI evaluates release readiness evidence from bench
   await writeFile(benchmarkPath, benchmarkResult.stdout, "utf8");
 
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec019-store-"));
-  const payloads = realCodexPayloads("s-spec-019-gates");
+  const payloads = realCodexPayloads("s-gates");
 
   await invokeHook({ hook: "SessionStart", payload: payloads.sessionStart, storePath });
   await invokeHook({ hook: "UserPromptSubmit", payload: payloads.userPromptSubmit, storePath });

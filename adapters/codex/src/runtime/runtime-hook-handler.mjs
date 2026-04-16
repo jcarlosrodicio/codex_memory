@@ -94,6 +94,15 @@ function boolFromEnv(name) {
   return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
+function boolFromEnvDefault(name, fallback = false) {
+  const raw = process.env[name];
+  if (raw == null || String(raw).trim().length === 0) {
+    return fallback;
+  }
+
+  return boolFromEnv(name);
+}
+
 function intFromEnv(name, fallback) {
   const raw = process.env[name];
   if (raw == null || String(raw).trim().length === 0) {
@@ -218,6 +227,12 @@ function resolveRuntimeControls(payload, fallback = {}) {
   const killSwitchMemory = boolFromEnv("CODEX_MEMORY_DISABLE_MEMORY");
 
   const controls = {
+    hooks_enabled: Boolean(
+      payload?.controls?.hooks_enabled
+      ?? payload?.user_visible_controls?.hooks_enabled
+      ?? fallback.hooks_enabled
+      ?? boolFromEnvDefault("CODEX_MEMORY_HOOKS_ENABLED", true)
+    ),
     disable_injection: Boolean(
       killSwitchMemory
       || payload?.controls?.disable_injection
@@ -253,6 +268,9 @@ function resolveRuntimeControls(payload, fallback = {}) {
   }
   if (killSwitchMemory) {
     reason_codes.push("memory_kill_switch_active");
+  }
+  if (!controls.hooks_enabled) {
+    reason_codes.push("hooks_disabled");
   }
   if (phase_gates.disable_capture) {
     reason_codes.push("capture_phase_disabled");
@@ -425,8 +443,53 @@ function extractMetrics(adapterResult, runtimeControls) {
     retrieved_count: Number(adapterResult?.context_pack_audit?.included?.length ?? 0),
     dropped_count: Number(adapterResult?.context_pack_audit?.dropped?.length ?? 0),
     token_savings_estimate: 0,
-    memory_enabled: !runtimeControls.controls.disable_injection,
+    memory_enabled: runtimeControls.controls.hooks_enabled && !runtimeControls.controls.disable_injection,
     semantic_mode: "off"
+  };
+}
+
+function buildHooksDisabledResult() {
+  return {
+    status: "ok",
+    warnings: [],
+    decision_summary: {
+      reason: "hooks_disabled",
+      audit_ref: null
+    },
+    inject_context: false,
+    context_pack: null,
+    context_pack_audit: {
+      included: [],
+      dropped: []
+    },
+    injection_metadata: {
+      disabled_by_control: true,
+      token_estimate: 0,
+      pack_item_count: 0,
+      pack_metrics: {
+        pack_tokens: 0,
+        retrieved_count: 0,
+        dropped_count: 0,
+        token_savings_estimate: 0,
+        memory_enabled: false,
+        semantic_mode: "off"
+      },
+      persistence_warnings: []
+    },
+    learning_stats: {
+      signals_seen: 0,
+      signals_promoted_to_buffer: 0,
+      signals_rejected_by_quality_policy: 0,
+      dropped_by_reason: {}
+    },
+    consolidation: {
+      learning_enabled: false,
+      promoted_atoms: [],
+      promoted_edges: [],
+      promoted_capsule: null,
+      dropped: [],
+      warnings: []
+    }
   };
 }
 
@@ -495,8 +558,9 @@ function persistRuntimeAudit(paths, auditRecord) {
     last_hook: auditRecord.hook_event_name,
     last_session_id: auditRecord.session_id,
     health: auditRecord.decision.degraded ? "degraded" : "ok",
+    hooks_enabled: Boolean(auditRecord.controls.hooks_enabled),
     memory_enabled: Boolean(auditRecord.metrics.memory_enabled),
-    learning_enabled: !auditRecord.controls.disable_learning,
+    learning_enabled: Boolean(auditRecord.controls.hooks_enabled) && !auditRecord.controls.disable_learning,
     semantic_mode: auditRecord.metrics.semantic_mode ?? "off",
     metrics: {
       pack_tokens: Number(auditRecord.metrics.pack_tokens ?? 0),
@@ -662,7 +726,10 @@ export async function runHookRuntime(argv = process.argv) {
   let output;
   let adapterResult;
   try {
-    if (["SessionStart", "UserPromptSubmit", "Stop"].includes(args.hook)) {
+    if (["SessionStart", "UserPromptSubmit", "Stop"].includes(args.hook) && !runtimeControls.controls.hooks_enabled) {
+      output = { continue: true };
+      adapterResult = buildHooksDisabledResult();
+    } else if (["SessionStart", "UserPromptSubmit", "Stop"].includes(args.hook)) {
       const execution = await runRealCodexHook(args.hook, adapter, payload, runtimeControls);
       output = execution.output;
       adapterResult = execution.adapterResult;

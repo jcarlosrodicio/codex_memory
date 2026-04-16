@@ -16,7 +16,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-016 defines consolidation policy, durable outputs, and fallback behavior", async () => {
+test("defines consolidation policy, durable outputs, and fallback behavior", async () => {
   const contract = await loadJson("core/contracts/session-consolidation-promotion.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-016");
@@ -26,7 +26,7 @@ test("SPEC-016 defines consolidation policy, durable outputs, and fallback behav
   assert.equal(contract.fallback_behavior.learning_disabled, "no_durable_promotion");
 });
 
-test("SPEC-016 consolidates high-confidence candidates into durable atoms/capsule and deduplicates existing memory", () => {
+test("consolidates high-confidence candidates into durable atoms/capsule and deduplicates existing memory", () => {
   const consolidator = new SessionConsolidator({
     minPromotionConfidence: 0.68,
     now: () => "2026-04-14T10:30:00.000Z"
@@ -94,7 +94,7 @@ test("SPEC-016 consolidates high-confidence candidates into durable atoms/capsul
   assert.ok(memoryStore.capsules.length >= 1);
 });
 
-test("SPEC-016 learning-off keeps candidates ephemeral and promotes nothing durable", () => {
+test("learning-off keeps candidates ephemeral and promotes nothing durable", () => {
   const pipeline = new SessionPipelineCore({
     event_options: { now: () => "2026-04-14T10:00:00.000Z" }
   });
@@ -227,7 +227,7 @@ test("Regression: contradiction is detected when durable memory is affirmative a
   );
 });
 
-test("SPEC-016 rejects generic prompt scaffolding and review artifacts from durable promotion", () => {
+test("rejects generic prompt scaffolding and review artifacts from durable promotion", () => {
   const consolidator = new SessionConsolidator({
     minPromotionConfidence: 0.68,
     now: () => "2026-04-14T10:30:00.000Z"
@@ -277,7 +277,7 @@ test("SPEC-016 rejects generic prompt scaffolding and review artifacts from dura
           id: "sig-generic-4",
           event_id: "evt-generic-4",
           atom_type: "workflow",
-          content: "El test nuevo en `/Users/juanca/project/adapters/codex/tests/spec-025-runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix",
+          content: "El test nuevo en `/Users/juanca/project/adapters/codex/tests/runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix",
           scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
           confidence: 0.9,
           created_at: "2026-04-14T10:02:06.000Z"
@@ -298,7 +298,7 @@ test("SPEC-016 rejects generic prompt scaffolding and review artifacts from dura
   assert.ok(result.dropped.some((item) => item.quality_reason === "path_reference_noise"));
 });
 
-test("SPEC-016 extractor suppresses generic scaffolding while preserving durable workflow and constraint signals", () => {
+test("extractor suppresses generic scaffolding while preserving durable workflow and constraint signals", () => {
   const extractor = new SessionSignalExtractor({
     maxSignalsPerEvent: 6,
     minConfidence: 0.4

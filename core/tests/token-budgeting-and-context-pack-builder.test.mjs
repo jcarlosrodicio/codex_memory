@@ -15,7 +15,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-013 defines strict hard budget, deterministic trimming, and required metrics", async () => {
+test("defines strict hard budget, deterministic trimming, and required metrics", async () => {
   const contract = await loadJson("core/contracts/context-pack-builder.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-013");
@@ -32,7 +32,7 @@ test("SPEC-013 defines strict hard budget, deterministic trimming, and required 
   ]);
 });
 
-test("SPEC-013 context pack enforces strict token ceiling and emits explainability for include/drop/trim", () => {
+test("context pack enforces strict token ceiling and emits explainability for include/drop/trim", () => {
   const builder = new ContextPackBuilder({
     hard_token_budget: 18,
     min_tokens_after_trim: 4,

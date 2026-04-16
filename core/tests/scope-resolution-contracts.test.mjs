@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-009 defines deterministic repository and branch identity derivation", async () => {
+test("defines deterministic repository and branch identity derivation", async () => {
   const resolver = await loadJson("core/contracts/repository-branch-scope-resolution.v1.json");
 
   assert.equal(resolver.spec_id, "SPEC-009");
@@ -28,7 +28,7 @@ test("SPEC-009 defines deterministic repository and branch identity derivation",
   ]);
 });
 
-test("SPEC-009 defines explicit non-git fallback behavior", async () => {
+test("defines explicit non-git fallback behavior", async () => {
   const resolver = await loadJson("core/contracts/repository-branch-scope-resolution.v1.json");
   const fallback = resolver.fallback_behavior;
 
@@ -40,7 +40,7 @@ test("SPEC-009 defines explicit non-git fallback behavior", async () => {
   );
 });
 
-test("SPEC-009 defines stable scope keys reusable by store, retrieval, and audit flows", async () => {
+test("defines stable scope keys reusable by store, retrieval, and audit flows", async () => {
   const resolver = await loadJson("core/contracts/repository-branch-scope-resolution.v1.json");
 
   assert.equal(

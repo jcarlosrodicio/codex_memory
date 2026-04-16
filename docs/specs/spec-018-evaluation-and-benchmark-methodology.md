@@ -17,6 +17,7 @@ Evaluation is based on replayable session fixtures and comparative benchmarks ra
 - Replay harness inputs and outputs
 - Benchmark report format
 - Core metrics such as token savings, hit rate, contamination rate, contradiction rate, and user-correction rate
+- Runtime health metrics such as `injection_rate`, `empty_pack_rate`, and `avg_token_savings_on_injected_prompts`
 - Runtime metric definitions shared with inspection surfaces
 
 ## Invariants and exclusions
@@ -42,6 +43,7 @@ If semantic mode is unavailable, benchmark suites must still run in lexical-only
 - The methodology compares at least baseline, cheap-first, and cheap-first-plus-semantic modes.
 - Token savings and memory quality are both first-class outputs.
 - The spec distinguishes benchmark metrics from local runtime health metrics and defines both sets.
+- The runtime-health metric set is rich enough to answer whether the system is winning because it injects useful memory, or merely active while still producing many empty packs.
 - The benchmark plan makes it possible to declare the zero-dependency MVP successful before the semantic backend exists.
 - The methodology defines a fixed golden-path replay fixture that can be introduced before the full release-evaluation stage.
 

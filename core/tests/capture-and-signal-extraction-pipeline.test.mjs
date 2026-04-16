@@ -13,7 +13,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-014 defines capture events, candidate schema, and bounded buffers", async () => {
+test("defines capture events, candidate schema, and bounded buffers", async () => {
   const contract = await loadJson("core/contracts/capture-signal-pipeline.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-014");
@@ -23,7 +23,7 @@ test("SPEC-014 defines capture events, candidate schema, and bounded buffers", a
   assert.equal(contract.buffering.overflow_behavior, "drop_oldest_and_record_warning");
 });
 
-test("SPEC-014 captures normalized events and extracts deterministic candidate signals with provenance", () => {
+test("captures normalized events and extracts deterministic candidate signals with provenance", () => {
   const pipeline = new SessionPipelineCore({
     event_options: {
       now: () => "2026-04-14T10:00:00.000Z"
@@ -68,7 +68,7 @@ test("SPEC-014 captures normalized events and extracts deterministic candidate s
   );
 });
 
-test("SPEC-014 keeps capture/session buffers bounded and drops oldest entries deterministically", () => {
+test("keeps capture/session buffers bounded and drops oldest entries deterministically", () => {
   const pipeline = new SessionPipelineCore({
     maxEventBuffer: 2,
     maxSignalBuffer: 2,
@@ -116,15 +116,30 @@ test("SPEC-014 keeps capture/session buffers bounded and drops oldest entries de
   assert.ok(state.warnings.some((warning) => warning.startsWith("signal_buffer_trimmed:")));
 });
 
-test("SPEC-014 durable-memory policy rejects review/meta chatter and keeps durable repo knowledge", () => {
+test("durable-memory policy rejects review/meta chatter and keeps durable repo knowledge", () => {
   assert.deepEqual(
     assessMemoryQuality("No encontré findings nuevos en este fix", { atomType: "bugfix" }),
     { accepted: false, reason: "review_chatter" }
   );
 
   assert.deepEqual(
-    assessMemoryQuality("El test nuevo en `/Users/juanca/project/adapters/codex/tests/spec-025-runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix", { atomType: "workflow" }),
+    assessMemoryQuality("El test nuevo en `/Users/juanca/project/adapters/codex/tests/runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix", { atomType: "workflow" }),
     { accepted: false, reason: "path_reference_noise" }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality("{\"title\":\"Revisa SPEC-026 API v1\"}", { atomType: "fact" }),
+    { accepted: false, reason: "title_payload_noise" }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality("If not blocked, summarize files edited so far and whether the test command has run", { atomType: "workflow" }),
+    { accepted: false, reason: "process_reporting_noise" }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality("El plan quedó cerrado en [2026-04-15-routine-builder-qa-fixes.md](/Users/juanca/project/docs/superpowers/plans/2026-04-15-routine-builder-qa-fixes.md:1) con Status: Completed on 2026-04-15", { atomType: "bugfix" }),
+    { accepted: false, reason: "process_reporting_noise" }
   );
 
   assert.deepEqual(
@@ -139,6 +154,11 @@ test("SPEC-014 durable-memory policy rejects review/meta chatter and keeps durab
 
   assert.equal(
     assessMemoryQuality("Always rebuild indexes after compact-store --apply", { atomType: "workflow" }).accepted,
+    true
+  );
+
+  assert.equal(
+    assessMemoryQuality("Default store path is ~/.codex/plugins/codex-memory/data and compact-store --apply rebuilds indexes after cleanup", { atomType: "fact" }).accepted,
     true
   );
 });

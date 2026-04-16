@@ -84,9 +84,9 @@ function runInspect(args) {
   return JSON.parse(result.stdout.trim());
 }
 
-test("SPEC-017 inspection CLI exposes status, metrics, inspect-last-pack, inspect-session, explain-atom", async () => {
+test("inspection CLI exposes status, metrics, inspect-last-pack, inspect-session, explain-atom", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec017-inspect-"));
-  const sessionId = "s-spec-017-inspect";
+  const sessionId = "s-inspect";
   const payloads = realCodexPayloads(sessionId);
 
   await invokeHook({ hook: "SessionStart", payload: payloads.sessionStart, storePath });
@@ -121,7 +121,7 @@ test("SPEC-017 inspection CLI exposes status, metrics, inspect-last-pack, inspec
   assert.equal(explained.atom.id, currentStore.atoms[0].id);
 });
 
-test("SPEC-017 inspection CLI analyzes and compacts the store only with explicit apply", async () => {
+test("inspection CLI analyzes and compacts the store only with explicit apply", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec017-cleanup-"));
   const store = new LocalMemoryStore({ rootDir: storePath });
   const memoryStore = store.loadMemoryStore();
@@ -196,9 +196,9 @@ test("SPEC-017 inspection CLI analyzes and compacts the store only with explicit
   assert.equal(reloaded.atoms[0].id, "atom-good-1");
 });
 
-test("SPEC-017 metrics expose learning-quality rejections from the latest audited sessions", async () => {
+test("metrics expose learning-quality rejections from the latest audited sessions", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec017-learning-metrics-"));
-  const sessionId = "s-spec-017-learning";
+  const sessionId = "s-learning";
 
   await invokeHook({
     hook: "SessionStart",
@@ -243,4 +243,158 @@ test("SPEC-017 metrics expose learning-quality rejections from the latest audite
   assert.ok(metrics.learning.sessions_observed >= 1);
   assert.ok(metrics.learning.filtered_by_quality_policy >= 1);
   assert.ok(metrics.learning.filtered_reasons.review_chatter >= 1);
+  assert.equal(typeof metrics.prompts.injection_rate, "number");
+  assert.equal(typeof metrics.prompts.empty_pack_rate, "number");
+  assert.equal(typeof metrics.prompts.avg_token_savings_on_injected_prompts, "number");
+  assert.equal(typeof metrics.prompts.max_token_savings_estimate, "number");
+  assert.equal(typeof metrics.prompt_drop_reasons.empty_pack, "object");
+  assert.equal(typeof metrics.store.artifacts.atoms, "number");
+  assert.equal(typeof metrics.store.edges.zero_edges_visible, "boolean");
+});
+
+test("metrics compute injection rate, empty-pack rate, injected savings, and breakdowns", async () => {
+  const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec017-metrics-breakdown-"));
+  const runtimeRoot = path.join(storePath, "runtime");
+  const store = new LocalMemoryStore({ rootDir: storePath });
+  const memoryStore = store.loadMemoryStore();
+
+  memoryStore.atoms.push(
+    {
+      id: "atom-noise-title",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      atom_type: "fact",
+      content: "{\"title\":\"Revisa SPEC-026 API v1\"}",
+      confidence: 0.72,
+      created_at: "2026-04-14T10:10:00.000Z"
+    },
+    {
+      id: "atom-keep",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      atom_type: "workflow",
+      content: "Always run node --test before finalize changes",
+      confidence: 0.91,
+      created_at: "2026-04-14T10:11:00.000Z"
+    }
+  );
+
+  store.rewriteCanonicalArtifact("atoms", memoryStore.atoms);
+  store.rebuildIndexes(memoryStore);
+
+  const audits = [
+    {
+      audit_schema_version: "1",
+      id: "audit-prompt-1",
+      occurred_at: "2026-04-14T10:00:00.000Z",
+      session_id: "s-1",
+      hook_event_name: "UserPromptSubmit",
+      decision: { reason: "context_pack_injected", inject_context: true },
+      pack: { included: [{ memory_id: "atom-keep" }], dropped: [{ memory_id: "atom-noise-title", reason: "scope_mismatch", stage: "lexical" }] },
+      metrics: { pack_tokens: 80, retrieved_count: 1, dropped_count: 1, token_savings_estimate: 120, memory_enabled: true, semantic_mode: "off" },
+      safety: { blocked_persistence_detected: false, redaction_detected: false, warning_count: 0 }
+    },
+    {
+      audit_schema_version: "1",
+      id: "audit-prompt-2",
+      occurred_at: "2026-04-14T10:05:00.000Z",
+      session_id: "s-2",
+      hook_event_name: "UserPromptSubmit",
+      decision: { reason: "empty_pack", inject_context: false },
+      pack: { included: [], dropped: [{ memory_id: "atom-noise-title", reason: "scope_mismatch", stage: "lexical" }, { memory_id: "capsule-x", reason: "below_lexical_threshold", stage: "lexical" }] },
+      metrics: { pack_tokens: 0, retrieved_count: 0, dropped_count: 2, token_savings_estimate: 0, memory_enabled: true, semantic_mode: "off" },
+      safety: { blocked_persistence_detected: false, redaction_detected: false, warning_count: 0 }
+    },
+    {
+      audit_schema_version: "1",
+      id: "audit-prompt-3",
+      occurred_at: "2026-04-14T10:10:00.000Z",
+      session_id: "s-3",
+      hook_event_name: "UserPromptSubmit",
+      decision: { reason: "context_pack_injected", inject_context: true },
+      pack: { included: [{ memory_id: "atom-keep" }], dropped: [{ memory_id: "capsule-y", reason: "section_budget_exhausted", stage: "pack" }] },
+      metrics: { pack_tokens: 64, retrieved_count: 1, dropped_count: 1, token_savings_estimate: 60, memory_enabled: true, semantic_mode: "off" },
+      safety: { blocked_persistence_detected: false, redaction_detected: false, warning_count: 0 }
+    },
+    {
+      audit_schema_version: "1",
+      id: "audit-stop-1",
+      occurred_at: "2026-04-14T10:15:00.000Z",
+      session_id: "s-3",
+      hook_event_name: "Stop",
+      learning: {
+        rejected_by_quality_policy: 2,
+        filtered_reasons: {
+          title_payload_noise: 1,
+          process_reporting_noise: 1
+        },
+        promoted_atoms: 1,
+        promoted_capsule: true
+      }
+    }
+  ];
+
+  const runtimeAuditPath = path.join(runtimeRoot, "audit.ndjson");
+  const runtimeStatusPath = path.join(runtimeRoot, "status.json");
+  await import("node:fs/promises").then(({ mkdir, writeFile }) => Promise.all([
+    mkdir(runtimeRoot, { recursive: true }),
+    writeFile(runtimeAuditPath, `${audits.map((item) => JSON.stringify(item)).join("\n")}\n`, "utf8"),
+    writeFile(runtimeStatusPath, JSON.stringify({
+      memory_enabled: true,
+      learning_enabled: true,
+      semantic_mode: "off",
+      metrics: {
+        pack_tokens: 64,
+        retrieved_count: 1,
+        dropped_count: 1,
+        token_savings_estimate: 60
+      },
+      safety: {
+        blocked_persistence_detected: false,
+        redaction_detected: false,
+        warning_count: 0
+      }
+    }, null, 2), "utf8")
+  ]));
+
+  const metrics = runInspect(["metrics", "--store-path", storePath, "--json"]);
+  assert.equal(metrics.prompts.total, 3);
+  assert.equal(metrics.prompts.injected, 2);
+  assert.equal(metrics.prompts.empty_pack, 1);
+  assert.equal(metrics.prompts.injection_rate, 2 / 3);
+  assert.equal(metrics.prompts.empty_pack_rate, 1 / 3);
+  assert.equal(metrics.prompts.avg_token_savings_estimate, 60);
+  assert.equal(metrics.prompts.avg_token_savings_on_injected_prompts, 90);
+  assert.equal(metrics.prompts.max_token_savings_estimate, 120);
+  assert.equal(metrics.prompt_drop_reasons.empty_pack.scope_mismatch, 1);
+  assert.equal(metrics.prompt_drop_reasons.empty_pack.below_lexical_threshold, 1);
+  assert.equal(metrics.learning.filtered_reasons.title_payload_noise, 1);
+  assert.equal(metrics.store.noise.detected, 1);
+  assert.equal(metrics.store.noise.by_reason.atoms.title_payload_noise, 1);
+  assert.equal(metrics.store.edges.zero_edges_visible, true);
+});
+
+test("dashboard generates cyberpunk HTML with key metrics from a test store", async () => {
+  const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec017-dashboard-"));
+  const sessionId = "s-dashboard";
+  const payloads = realCodexPayloads(sessionId);
+
+  await invokeHook({ hook: "SessionStart", payload: payloads.sessionStart, storePath });
+  await invokeHook({ hook: "UserPromptSubmit", payload: payloads.userPromptSubmit, storePath });
+  await invokeHook({ hook: "Stop", payload: payloads.stop, storePath });
+
+  const outputPath = path.join(storePath, "runtime", "dashboard-test.html");
+  const dashboard = runInspect(["dashboard", "--store-path", storePath, "--output", outputPath, "--json"]);
+  assert.equal(dashboard.command, "dashboard");
+  assert.equal(dashboard.generated, true);
+  assert.equal(dashboard.output_path, outputPath);
+  assert.equal(typeof dashboard.summary.verdict, "string");
+  assert.equal(typeof dashboard.summary.injection_rate, "number");
+
+  const html = await import("node:fs/promises").then(({ readFile }) => readFile(outputPath, "utf8"));
+  assert.match(html, /codex-memory observability deck/i);
+  assert.match(html, /Injection rate/i);
+  assert.match(html, /Empty pack rate/i);
+  assert.match(html, /System verdict/i);
+  assert.match(html, /cyberpunk/i);
 });

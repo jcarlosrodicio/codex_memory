@@ -27,6 +27,33 @@ function parseNdjsonIfExists(filePath) {
     .map((line) => JSON.parse(line));
 }
 
+function average(values = []) {
+  if (!Array.isArray(values) || values.length === 0) {
+    return 0;
+  }
+
+  const total = values.reduce((sum, value) => sum + Number(value ?? 0), 0);
+  return total / values.length;
+}
+
+function incrementReasonBucket(bucket, reason) {
+  const key = String(reason ?? "unknown");
+  bucket[key] = Number(bucket[key] ?? 0) + 1;
+}
+
+function mergeReasonBuckets(target, source = {}) {
+  for (const [reason, count] of Object.entries(source)) {
+    target[reason] = Number(target[reason] ?? 0) + Number(count ?? 0);
+  }
+}
+
+function countDroppedReasons(drops = []) {
+  return (Array.isArray(drops) ? drops : []).reduce((acc, drop) => {
+    incrementReasonBucket(acc, drop.reason);
+    return acc;
+  }, {});
+}
+
 export function loadInspectionData({ storePath }) {
   const store = new LocalMemoryStore({ rootDir: storePath });
   const memoryStore = store.loadMemoryStore();
@@ -53,6 +80,7 @@ export function buildStatusReport({ storePath }) {
     health: "unknown",
     runtime_profile: "unknown",
     semantic_mode: "off",
+    hooks_enabled: true,
     memory_enabled: false,
     learning_enabled: false,
     metrics: {
@@ -75,6 +103,7 @@ export function buildStatusReport({ storePath }) {
     health: status.health,
     runtime_profile: status.runtime_profile,
     runtime: {
+      hooks_enabled: Boolean(status.hooks_enabled ?? true),
       memory_enabled: Boolean(status.memory_enabled),
       learning_enabled: Boolean(status.learning_enabled),
       semantic_mode: status.semantic_mode ?? "off"
@@ -101,6 +130,7 @@ export function buildStatusReport({ storePath }) {
 
 export function buildMetricsReport({ storePath }) {
   const loaded = loadInspectionData({ storePath });
+  const analysis = loaded.store.analyzeArtifacts(loaded.memoryStore);
   const promptAudits = loaded.audits.filter((item) => item.hook_event_name === "UserPromptSubmit");
   const latestStopAuditBySession = new Map();
 
@@ -139,10 +169,37 @@ export function buildMetricsReport({ storePath }) {
     aggregates.avg_token_savings_estimate = totals.savings / promptAudits.length;
   }
 
+  const injectedPromptAudits = promptAudits.filter((item) => (
+    item.decision?.reason === "context_pack_injected" || item.decision?.inject_context
+  ));
+  const emptyPackAudits = promptAudits.filter((item) => item.decision?.reason === "empty_pack");
+
+  const promptDropReasons = {
+    all: {},
+    empty_pack: {},
+    decision_reasons: {}
+  };
+
+  for (const audit of promptAudits) {
+    incrementReasonBucket(promptDropReasons.decision_reasons, audit.decision?.reason ?? "unknown");
+    mergeReasonBuckets(promptDropReasons.all, countDroppedReasons(audit.pack?.dropped));
+  }
+
+  for (const audit of emptyPackAudits) {
+    const reasons = countDroppedReasons(audit.pack?.dropped);
+    if (Object.keys(reasons).length === 0) {
+      incrementReasonBucket(promptDropReasons.empty_pack, audit.decision?.reason ?? "empty_pack");
+      continue;
+    }
+
+    mergeReasonBuckets(promptDropReasons.empty_pack, reasons);
+  }
+
   const learning = {
     sessions_observed: latestStopAuditBySession.size,
     filtered_by_quality_policy: 0,
     filtered_reasons: {},
+    quality_policy_filtered_reasons: {},
     promoted_atoms: 0,
     promoted_capsules: 0
   };
@@ -154,12 +211,38 @@ export function buildMetricsReport({ storePath }) {
 
     for (const [reason, count] of Object.entries(audit.learning?.filtered_reasons ?? {})) {
       learning.filtered_reasons[reason] = Number(learning.filtered_reasons[reason] ?? 0) + Number(count ?? 0);
+      if (!["no_signal_match", "low_signal_confidence"].includes(reason)) {
+        learning.quality_policy_filtered_reasons[reason] = Number(
+          learning.quality_policy_filtered_reasons[reason] ?? 0
+        ) + Number(count ?? 0);
+      }
     }
   }
+
+  const storeNoiseDetected = Number(analysis.noise_counts.atoms ?? 0) + Number(analysis.noise_counts.capsules ?? 0);
+  const totalMemoryArtifacts = Number(analysis.artifact_counts.atoms ?? 0) + Number(analysis.artifact_counts.capsules ?? 0);
+  const duplicatesTotal = Object.values(analysis.duplicate_counts ?? {}).reduce((sum, count) => sum + Number(count ?? 0), 0);
+
+  const prompts = {
+    total: promptAudits.length,
+    injected: injectedPromptAudits.length,
+    empty_pack: emptyPackAudits.length,
+    injection_rate: promptAudits.length > 0 ? injectedPromptAudits.length / promptAudits.length : 0,
+    empty_pack_rate: promptAudits.length > 0 ? emptyPackAudits.length / promptAudits.length : 0,
+    avg_token_savings_estimate: aggregates.avg_token_savings_estimate,
+    avg_token_savings_on_injected_prompts: average(
+      injectedPromptAudits.map((item) => Number(item.metrics?.token_savings_estimate ?? 0))
+    ),
+    max_token_savings_estimate: promptAudits.reduce(
+      (max, item) => Math.max(max, Number(item.metrics?.token_savings_estimate ?? 0)),
+      0
+    )
+  };
 
   return {
     command: "metrics",
     runtime: {
+      hooks_enabled: Boolean(loaded.status?.hooks_enabled ?? true),
       memory_enabled: Boolean(loaded.status?.memory_enabled ?? false),
       learning_enabled: Boolean(loaded.status?.learning_enabled ?? false),
       semantic_mode: loaded.status?.semantic_mode ?? "off"
@@ -170,8 +253,28 @@ export function buildMetricsReport({ storePath }) {
       dropped_count: 0,
       token_savings_estimate: 0
     },
+    prompts,
     aggregates,
+    prompt_drop_reasons: promptDropReasons,
     learning,
+    store: {
+      artifacts: analysis.artifact_counts,
+      duplicates: {
+        ...analysis.duplicate_counts,
+        total: duplicatesTotal
+      },
+      noise: {
+        detected: storeNoiseDetected,
+        rate: totalMemoryArtifacts > 0 ? storeNoiseDetected / totalMemoryArtifacts : 0,
+        by_reason: analysis.noise_reason_counts,
+        counts: analysis.noise_counts
+      },
+      orphans: analysis.orphan_counts,
+      edges: {
+        count: Number(analysis.artifact_counts.edges ?? 0),
+        zero_edges_visible: Number(analysis.artifact_counts.edges ?? 0) === 0
+      }
+    },
     safety: loaded.status?.safety ?? {
       blocked_persistence_detected: false,
       redaction_detected: false,

@@ -24,7 +24,7 @@ Every major runtime decision emits structured audit artifacts, and the CLI expos
 - Explainability is part of the product, not debug-only behavior.
 - Audit output must not expose blocked secret content.
 - CLI commands read the same canonical artifacts as the runtime.
-- Full admin dashboards are out of scope.
+- Any visual dashboard must remain local-first, zero-deps, and built on the same CLI/runtime artifacts instead of a parallel backend.
 
 ## Data flow
 
@@ -40,6 +40,9 @@ If verbose audit mode is disabled, the system must still emit minimal explainabi
 - Inspection commands are defined for both humans and scripts.
 - Safety filtering applies to audit output.
 - At least one inspect surface exposes the latest token, retrieval, and safety metrics needed to diagnose plugin behavior.
+- The inspection surface exposes injection rate, empty-pack rate, and savings on injected prompts distinctly from overall averages.
+- The inspection surface exposes quality-policy filter reasons and store-noise detection clearly enough to diagnose weak durable memory.
+- A local visual dashboard exists for human operators without introducing server infrastructure or non-local telemetry.
 - The docs distinguish between quick user-facing metrics in Codex and deeper local audit artifacts for contributors.
 - A minimal metric surface is available as soon as `ContextPack` is implemented, even if the full CLI surface lands later.
 

@@ -22,7 +22,7 @@ function extractCommands(config, eventName) {
   );
 }
 
-test("SPEC-025 global activation creates ~/.codex/hooks-style config when missing", async () => {
+test("global activation creates ~/.codex/hooks-style config when missing", async () => {
   const workDir = await mkdtemp(path.join(tmpdir(), "codex-memory-global-hooks-create-"));
   const hooksPath = path.join(workDir, "hooks.json");
   const configPath = path.join(workDir, "config.toml");
@@ -58,7 +58,7 @@ test("SPEC-025 global activation creates ~/.codex/hooks-style config when missin
   assert.equal(result.feature_flag_status, "feature_flag_enabled");
 });
 
-test("SPEC-025 global activation merges safely and preserves non-codex-memory hooks", async () => {
+test("global activation merges safely and preserves non-codex-memory hooks", async () => {
   const workDir = await mkdtemp(path.join(tmpdir(), "codex-memory-global-hooks-merge-"));
   const hooksPath = path.join(workDir, "hooks.json");
   const configPath = path.join(workDir, "config.toml");
@@ -129,7 +129,7 @@ test("SPEC-025 global activation merges safely and preserves non-codex-memory ho
   assert.match(configToml, /codex_hooks\s*=\s*true/);
 });
 
-test("SPEC-025 global activation removes stale codex-memory entries before appending canonical ones", () => {
+test("global activation removes stale codex-memory entries before appending canonical ones", () => {
   const existing = {
     hooks: {
       SessionStart: [
@@ -158,7 +158,7 @@ test("SPEC-025 global activation removes stale codex-memory entries before appen
   assert.ok(warnings.some((item) => item.startsWith("removed_previous_codex_memory_hooks:")));
 });
 
-test("SPEC-025 config updater enables codex_hooks when features section exists with false", () => {
+test("config updater enables codex_hooks when features section exists with false", () => {
   const input = [
     "[features]",
     "codex_hooks = false",
@@ -173,7 +173,7 @@ test("SPEC-025 config updater enables codex_hooks when features section exists w
   assert.match(result.content, /\[another\]/);
 });
 
-test("SPEC-025 config updater adds codex_hooks to existing features section when missing", () => {
+test("config updater adds codex_hooks to existing features section when missing", () => {
   const input = [
     "[features]",
     "safe_mode = true",
@@ -187,7 +187,7 @@ test("SPEC-025 config updater adds codex_hooks to existing features section when
   assert.match(result.content, /\[features\][\s\S]*safe_mode = true[\s\S]*codex_hooks = true/);
 });
 
-test("SPEC-025 config updater is idempotent when codex_hooks already true", () => {
+test("config updater is idempotent when codex_hooks already true", () => {
   const input = [
     "[features]",
     "codex_hooks = true",
@@ -205,7 +205,7 @@ test("SPEC-025 config updater is idempotent when codex_hooks already true", () =
   assert.equal(codexHooksHits.length, 1);
 });
 
-test("SPEC-025 config updater reports warning for ambiguous multiple features sections", () => {
+test("config updater reports warning for ambiguous multiple features sections", () => {
   const input = [
     "[features]",
     "codex_hooks = true",
@@ -219,7 +219,7 @@ test("SPEC-025 config updater reports warning for ambiguous multiple features se
   assert.ok(result.warnings.includes("config_toml_ambiguous_multiple_features_sections"));
 });
 
-test("SPEC-025 global installer keeps config file untouched on ambiguous config and returns warning", async () => {
+test("global installer keeps config file untouched on ambiguous config and returns warning", async () => {
   const workDir = await mkdtemp(path.join(tmpdir(), "codex-memory-global-hooks-ambiguous-config-"));
   const hooksPath = path.join(workDir, "hooks.json");
   const configPath = path.join(workDir, "config.toml");
@@ -246,7 +246,7 @@ test("SPEC-025 global installer keeps config file untouched on ambiguous config 
   assert.ok(result.warnings.includes("config_toml_ambiguous_multiple_features_sections"));
 });
 
-test("SPEC-025 global installer is idempotent across repeated runs", async () => {
+test("global installer is idempotent across repeated runs", async () => {
   const workDir = await mkdtemp(path.join(tmpdir(), "codex-memory-global-hooks-idempotent-"));
   const hooksPath = path.join(workDir, "hooks.json");
   const configPath = path.join(workDir, "config.toml");
@@ -276,7 +276,7 @@ test("SPEC-025 global installer is idempotent across repeated runs", async () =>
   assert.equal(codexHooksEnabledKeys.length, 1);
 });
 
-test("SPEC-025 generated hook commands still run when PATH does not contain node", async () => {
+test("generated hook commands still run when PATH does not contain node", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-hook-command-no-path-"));
   const { config } = mergeGlobalHooksConfig({ hooks: {} }, {
     pluginRoot: repoRoot,

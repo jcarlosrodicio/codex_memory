@@ -31,6 +31,7 @@ Documentation is treated as part of the product surface. The README and companio
 - Docs must describe runtime activation and observable persistence as separate from simple installability.
 - Docs must explain good durable memory vs noise using deterministic, reviewable rules.
 - Docs must document store maintenance commands including `analyze-store`, `compact-store`, and the explicit `--apply` gate.
+- Docs must document the local dashboard surface and explain how to interpret injection rate, empty-pack rate, and detected store noise.
 - Docs must explain how the hook installer avoids bare-`node` runtime failures and how to recover from visible `hook exited with code 127`.
 - Docs must not promise unsupported direct installation from a Git repository URL unless Codex docs explicitly support it.
 - Marketing copy unsupported by the implemented runtime or benchmarks is out of scope.
@@ -44,7 +45,7 @@ Architecture and spec decisions are distilled into public docs. Public readers s
 3. how durable memory is promoted,
 4. why obviously bad memories such as `You are a helpful assistant` are rejected,
 5. why review chatter like `No encontré findings nuevos...` and path-heavy review fragments are rejected,
-6. how to inspect, benchmark, and compact the local store,
+6. how to inspect, benchmark, compact, and visualize the local store,
 7. how to verify that installed hook commands no longer depend on host `PATH`.
 
 ## Implemented scope
@@ -57,6 +58,7 @@ This spec is satisfied by the current public surface:
 - architecture docs explain the memory-quality policy and explicit store maintenance path,
 - security docs explain why bad durable memory is a safety and trust problem,
 - the CLI README documents analysis and compaction commands,
+- the docs now document the local `dashboard` and `open-dashboard` flow,
 - the roadmap marks `SPEC-020` as implemented and clarifies what remains post-MVP.
 
 ## Acceptance criteria
@@ -65,6 +67,7 @@ This spec is satisfied by the current public surface:
 - Public docs define a simple install target for Codex app users and a compatible CLI story.
 - Public docs explain local installation clearly and describe marketplace publication as a future distribution channel.
 - Public docs explain the healthy runtime signals and metrics a maintainer should inspect.
+- Public docs explain how to tell the difference between “memory is active” and “memory is actually winning”.
 - Public docs define a practical “good memory” policy and name concrete rejected examples such as `You are a helpful assistant` and generic scaffolding/noise.
 - Public docs explain how `analyze-store` and `compact-store --apply` fit into release hygiene and benchmark trustworthiness.
 - The repository can be understood by a new GitHub visitor in one pass without hidden context.

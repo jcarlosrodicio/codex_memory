@@ -74,7 +74,7 @@ The learning pipeline is intentionally conservative:
 4. the consolidator promotes only durable candidates above the confidence threshold,
 5. the store persists canonical artifacts and rebuilds indexes.
 
-This is the key design change for MVP quality: durable promotion is not “anything extractable.” It is filtered to prefer memory that will plausibly save tokens or improve future work.
+This is the key design choice behind the current product behavior: durable promotion is not “anything extractable.” It is filtered to prefer memory that will plausibly save tokens or improve future work.
 
 ## Good memory vs noise
 
@@ -122,7 +122,7 @@ This keeps cleanup explicit, deterministic, zero-deps, and safe to re-run.
 - explainable prompt injection
 - explicit scope isolation
 - safe runtime degradation
-- explicit store maintenance for public-release hygiene
+- explicit store maintenance so persisted memory stays trustworthy over time
 
 ## Documentation map
 

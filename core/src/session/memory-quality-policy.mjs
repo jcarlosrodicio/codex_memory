@@ -34,6 +34,28 @@ const CONVERSATIONAL_NOISE_PATTERNS = [
   /^\s*(s[ií]|vale|ok|okay)\s*[:,-]/i
 ];
 
+const PROCESS_REPORTING_PATTERNS = [
+  /\bif not blocked\b/i,
+  /\bsummarize files edited\b/i,
+  /\bfiles edited so far\b/i,
+  /\btest command has run\b/i,
+  /\bplan qued[oó] cerrado\b/i,
+  /\bstatus\s*:\s*completed\b/i,
+  /\bcompleted on \d{4}-\d{2}-\d{2}\b/i,
+  /\blos cambios est[aá]n hechos en este mismo repo\b/i,
+  /\ben este mismo repo\b/i,
+  /\bqued[oó] desarrollado\b/i,
+  /\busing subagents\b/i,
+  /\busando subagentes\b/i,
+  /\bte prepar[eé]\b/i,
+  /\btambi[eé]n dej[eé] una peque(?:na|ñ)a prueba\b/i
+];
+
+const GENERIC_REVIEW_REMINDER_PATTERNS = [
+  /^\s*(revisa(?:r)?|review|check)\b/i,
+  /^\s*(revisa(?:r)?|review|check)\s+spec[-\s]?\d+/i
+];
+
 const META_SCAFFOLDING_PATTERNS = [
   /^#+\s/,
   /^[-*]\s/,
@@ -151,6 +173,14 @@ function looksConversational(text) {
   return CONVERSATIONAL_NOISE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+function looksLikeProcessReporting(text) {
+  return PROCESS_REPORTING_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function looksLikeGenericReviewReminder(text) {
+  return GENERIC_REVIEW_REMINDER_PATTERNS.some((pattern) => pattern.test(String(text ?? "").trim()));
+}
+
 function hasUsefulSpecificity(text) {
   if (/[`/\\_-]/.test(text) || /\d/.test(text)) {
     return true;
@@ -169,19 +199,57 @@ function hasActionAnchor(text) {
   return ACTION_TOKENS.some((token) => normalized.includes(token));
 }
 
+function parseJsonObject(raw) {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function looksLikeTitlePayloadNoise(text) {
+  const parsed = parseJsonObject(text);
+  if (!parsed) {
+    return false;
+  }
+
+  const keys = Object.keys(parsed)
+    .filter((key) => parsed[key] !== null && parsed[key] !== undefined && String(parsed[key]).trim() !== "");
+
+  if (keys.length !== 1 || keys[0] !== "title") {
+    return false;
+  }
+
+  const title = String(parsed.title ?? "").trim();
+  return title.length > 0;
+}
+
 function looksLikePathReferenceNoise(text) {
   const normalized = normalizeText(text);
   const hasAbsoluteUserPath = /\/users\/[^/\s]+\/.+/i.test(text);
+  const hasHomePath = /(?:^|[\s`(])~\/[^\s)]+/.test(text);
   const hasLineReference = /:\d+(?:-\d+)?\b/.test(text);
   const hasPathHeavyMarkdown = /\[[^\]]+\]\([^)]*\/[^)]*\)/.test(text);
   const hasReviewContext = /\b(test nuevo|finding|review|fix)\b/i.test(text);
 
-  if (!(hasAbsoluteUserPath || hasLineReference || hasPathHeavyMarkdown)) {
+  if (!(hasAbsoluteUserPath || hasHomePath || hasLineReference || hasPathHeavyMarkdown)) {
     return false;
   }
 
   if (normalized.includes("default store path") || normalized.includes("config path")) {
     return false;
+  }
+
+  if (hasAbsoluteUserPath) {
+    return true;
   }
 
   return hasReviewContext || !hasDurableDomainAnchor(text);
@@ -214,8 +282,20 @@ export function assessMemoryQuality(content, { atomType = null } = {}) {
     return { accepted: false, reason: "review_chatter" };
   }
 
+  if (looksLikeTitlePayloadNoise(raw)) {
+    return { accepted: false, reason: "title_payload_noise" };
+  }
+
+  if (looksLikeGenericReviewReminder(raw)) {
+    return { accepted: false, reason: "generic_review_reminder" };
+  }
+
   if (looksConversational(raw) && !hasDurableDomainAnchor(raw)) {
     return { accepted: false, reason: "conversational_noise" };
+  }
+
+  if (looksLikeProcessReporting(raw)) {
+    return { accepted: false, reason: "process_reporting_noise" };
   }
 
   if (looksLikePathReferenceNoise(raw)) {

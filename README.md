@@ -2,80 +2,174 @@
 
 `codex-memory` is a local-first memory engine for coding agents, with a first-party adapter for Codex.
 
-The product goal is simple: reduce raw prompt replay and reinject only the memory that is durable, scoped, explainable, and actually useful. The MVP already captures real Codex hook events, promotes durable memory into a local store, injects bounded context packs, records audit artifacts, and now includes store cleanup plus a practical memory-quality policy.
+It captures useful signals from real Codex sessions, promotes only durable memory, and reinjects small bounded context packs instead of replaying raw transcript history.
 
-## What ships today
+## What It Gives You
 
-- `core/`: deterministic memory model, storage, retrieval, packing, and learning promotion.
-- `adapters/codex/`: real Codex hook integration with global activation and safe degradation.
-- `cli/`: inspection, benchmark, quality-gates, and store maintenance commands.
-- `docs/`: public docs and numbered specs aligned to the current runtime.
+- local persistence under `~/.codex/plugins/codex-memory/data`
+- scoped memory by repo and branch
+- bounded prompt injection instead of full transcript replay
+- deterministic memory quality filtering
+- audit artifacts that explain what was injected, dropped, learned, or skipped
+- a local visual dashboard to see whether memory is actually helping
 
-## Why this exists
+## Quick Start
 
-Saving whole chat transcripts is easy, but it makes agent memory worse:
+From the repository root:
 
-- it burns tokens on repeated raw history,
-- it mixes durable preferences with one-off noise,
-- it preserves contradictions instead of resolving them,
-- it leaks context across repos, branches, and sessions,
-- it makes it hard to audit why something was remembered.
+```bash
+mkdir -p ~/.codex/plugins ~/.agents/plugins
+ln -s "$(pwd)" ~/.codex/plugins/codex-memory
+```
 
-`codex-memory` keeps the cheap-first, zero-deps path as the default: lexical retrieval, explicit scope rules, deterministic promotion, bounded injection, and file-based persistence.
+Create or update `~/.agents/plugins/marketplace.json` so Codex can discover the plugin:
 
-## MVP status
+```json
+{
+  "name": "local-plugins",
+  "interface": {
+    "displayName": "Local Plugins"
+  },
+  "plugins": [
+    {
+      "name": "codex-memory",
+      "source": {
+        "source": "local",
+        "path": "./.codex/plugins/codex-memory"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
+```
 
-The repo is no longer only a design skeleton. Layers 1-5 are implemented enough to run end-to-end locally:
+Then:
 
-- capture and normalization,
-- signal extraction and session consolidation,
-- lexical retrieval and graph expansion,
-- runtime controls and observable local persistence,
-- inspection, benchmarking, and release-quality checks,
-- public OSS documentation for real users.
+1. Restart Codex.
+2. Install `Codex Memory` from `Local Plugins` in the app, or via `/plugins` in Codex CLI.
+3. Run the global hook installer from this repo:
 
-Still intentionally out of scope for the first public release:
+```bash
+node ./adapters/codex/bin/install-global-hooks.mjs
+```
 
-- mandatory semantic/vector infrastructure,
-- replaying full chat transcripts as the main memory format,
-- a multi-adapter ecosystem beyond Codex.
+That installer:
 
-## How it works
+- merges `~/.codex/hooks.json` safely
+- enables `codex_hooks = true` in `~/.codex/config.toml`
+- writes hook commands with an absolute Node path so runtime does not depend on `PATH`
 
-1. Codex hooks capture session events.
-2. The session pipeline extracts candidate signals from prompt/response excerpts.
-3. A memory-quality policy rejects generic scaffolding and low-value fragments before durable promotion.
-4. The consolidator promotes durable atoms, edges, and session capsules into the local store.
-5. Retrieval builds a bounded `ContextPack` for the next task.
-6. Runtime artifacts explain what was injected, dropped, redacted, learned, or skipped.
+`codex-memory` also treats `hooks_enabled` as enabled by default at runtime.
 
-## Good memory policy
+- default: `hooks_enabled = true`
+- optional override: `CODEX_MEMORY_HOOKS_ENABLED=false`
 
-The project now treats “good memory” as a deterministic product rule, not a vague aspiration.
+If you turn it off, the plugin stays installed and the hooks still return safely, but runtime behavior is suspended:
 
-Durable memory is usually one of these:
+- no capture
+- no context injection
+- no durable learning or consolidation
+- `status`, `metrics`, and the dashboard will show hooks as disabled
 
-- user preferences that are likely to recur,
-- repository workflows or commands worth repeating,
-- constraints that bound future work,
-- decisions that supersede older behavior,
-- concrete facts about the repo/runtime/config that are stable enough to matter.
+## Verify The Install
 
-The pipeline rejects content that is technically extractable but not useful durable memory, including examples like:
+Check the global hook registry and feature flag:
+
+```bash
+test -f ~/.codex/hooks.json && echo "hooks config present"
+rg -n "codex_hooks\\s*=\\s*true" ~/.codex/config.toml
+rg -n "codex-memory-hook\\.mjs" ~/.codex/hooks.json
+```
+
+Then use Codex in any repo for a few prompts and inspect the runtime:
+
+```bash
+node ./cli/bin/codex-memory-inspect.mjs status --json
+node ./cli/bin/codex-memory-inspect.mjs metrics --json
+node ./cli/bin/codex-memory-inspect.mjs open-dashboard
+```
+
+The default dashboard path is:
+
+- `~/.codex/plugins/codex-memory/data/runtime/dashboard.html`
+
+If you are on a headless surface:
+
+```bash
+node ./cli/bin/codex-memory-inspect.mjs dashboard --output /tmp/codex-memory-dashboard.html --json
+```
+
+## How It Works
+
+1. Codex hooks capture session events such as `SessionStart`, `UserPromptSubmit`, and `Stop`.
+2. The session pipeline normalizes those events and extracts candidate signals.
+3. A memory-quality policy rejects generic scaffolding, review chatter, process noise, and other low-value fragments before durable promotion.
+4. Durable atoms and session capsules are persisted to the local store.
+5. Retrieval builds a bounded `ContextPack` for future prompts in the same scope.
+6. Runtime artifacts explain what happened so you can audit the system.
+
+## Dashboard And Metrics
+
+The recommended human-facing surface is the dashboard:
+
+```bash
+node ./cli/bin/codex-memory-inspect.mjs dashboard
+node ./cli/bin/codex-memory-inspect.mjs open-dashboard
+```
+
+The dashboard and `metrics` output answer the questions that matter most:
+
+- whether hooks are enabled at all
+- how often memory is injected
+- how often prompts still end in `empty_pack`
+- how much token savings happen overall
+- how much token savings happen only on injected prompts
+- which reasons dominate drops and empty packs
+- how much candidate memory is being filtered by quality policy
+- whether the persisted store still contains noisy durable artifacts
+- whether graph edges are still effectively unused
+
+Practical reading:
+
+- high `avg_token_savings_on_injected_prompts` is good
+- high `empty_pack_rate` means the system still misses too many useful opportunities
+- `scope_mismatch` dominating empty packs usually means memory exists, but in another repo or branch
+- `below_lexical_threshold` dominating empty packs usually means memory exists, but relevance is too weak for that prompt
+- visible store noise means compaction is probably worth running
+
+More detail lives in [docs/metrics.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/metrics.md).
+
+## Good Memory Policy
+
+`codex-memory` only tries to keep memory that is likely to save tokens or improve future work.
+
+Useful durable memory is usually one of these:
+
+- recurring preferences
+- repository workflows or commands worth repeating
+- constraints that bound future work
+- technical decisions that supersede older behavior
+- stable repo/runtime/config facts
+- bugfix knowledge worth reusing
+
+The runtime rejects low-value durable noise, including examples like:
 
 - `You are a helpful assistant`
 - generic system scaffolding such as “your job is to…”
-- prompt boilerplate or UI-title instructions
+- title-only payloads such as `{"title":"Revisa SPEC-026 API v1"}`
+- reminders like `Revisar SPEC-029 y SPEC-030`
 - review chatter such as `No encontré findings nuevos en este fix`
-- review/meta artifacts such as `::code-comment{...}`
-- absolute user-home file references or line-specific review fragments with no durable value
-- fragments ending in `:` or trivial bullet/header leftovers
-- text that is too generic, too short, or too unspecific to save tokens later
-- subjective process chatter such as “mi conclusión es…” or “siguiente paso razonable…”
+- process notes such as `If not blocked, summarize files edited so far...`
+- absolute home-path review fragments and line-specific file commentary with no reusable rule
+- subjective conversational residue such as “mi conclusión es…”
 
-This policy is deterministic, zero-deps, auditable in tests, and shared between promotion and store maintenance.
+This policy is deterministic, zero-deps, and shared by both promotion and store cleanup.
 
-## Store layout and persistence
+## Store Layout
 
 Default local store path:
 
@@ -99,53 +193,11 @@ Runtime artifacts:
 - `runtime/audit.ndjson`
 - `runtime/sessions/<session-id>.json`
 
-Override the store root with `CODEX_MEMORY_STORE_DIR` when needed.
+Override the root with `CODEX_MEMORY_STORE_DIR` if needed.
 
-## Install and activate
+## Analyze And Clean The Store
 
-Local marketplace install is the supported first-use path.
-
-1. Clone the repository.
-2. Link it into `~/.codex/plugins/codex-memory`.
-3. Add it to `~/.agents/plugins/marketplace.json`.
-4. Restart Codex and install `Codex Memory` from `Local Plugins`.
-5. Run the global hook installer.
-
-```bash
-mkdir -p ~/.codex/plugins ~/.agents/plugins
-ln -s "/absolute/path/to/codex-memory" ~/.codex/plugins/codex-memory
-node ./adapters/codex/bin/install-global-hooks.mjs
-rg -n "codex_hooks\\s*=\\s*true" ~/.codex/config.toml
-```
-
-That installer safely merges `~/.codex/hooks.json` and ensures:
-
-```toml
-[features]
-codex_hooks = true
-```
-
-The repo intentionally does not ship an always-on repo-local `.codex/hooks.json`, because combining repo-local and global activation causes duplicate execution inside `codex-memory`.
-
-The installer also writes hook commands with an explicit Node executable path instead of bare `node`. This avoids the common real-world failure mode:
-
-- `Failed`
-- `error: hook exited with code 127`
-
-If you still see `127`, the usual fix is to rerun the installer so `~/.codex/hooks.json` is regenerated with the current Node path:
-
-```bash
-node ./adapters/codex/bin/install-global-hooks.mjs
-rg -n "codex-memory-hook\\.mjs" ~/.codex/hooks.json
-```
-
-Healthy output should show commands that start with a quoted absolute Node path, not plain `node`.
-
-Detailed setup is in [docs/installation.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/installation.md).
-
-## Inspect, measure, and maintain
-
-Core operator commands:
+Inspection and maintenance commands:
 
 ```bash
 node ./cli/bin/codex-memory-inspect.mjs status --json
@@ -154,69 +206,54 @@ node ./cli/bin/codex-memory-inspect.mjs inspect-last-pack --json
 node ./cli/bin/codex-memory-inspect.mjs analyze-store --json
 node ./cli/bin/codex-memory-inspect.mjs compact-store --json
 node ./cli/bin/codex-memory-inspect.mjs compact-store --apply --json
-node ./cli/bin/codex-memory-benchmark.mjs --fixture ./adapters/codex/tests/fixtures/layer4-golden-path-session.json --json
-node ./cli/bin/codex-memory-quality-gates.mjs --benchmark-report <path>.json --store-path ~/.codex/plugins/codex-memory/data --json
 ```
 
-`analyze-store` reports duplicate and low-value artifacts in canonical storage.
+`analyze-store` is read-only and reports:
 
-`metrics` now also summarizes recent learning quality, including how many candidate memories were filtered by policy before durable promotion.
+- duplicate artifacts
+- noisy durable memory
+- orphaned edges
+- policy reason breakdowns for noisy artifacts
 
-`compact-store` is safe by default and only rewrites canonical artifacts when you pass `--apply`. The compaction flow:
-
-- deduplicates exact/equivalent `events`, `atoms`, `edges`, and `capsules`,
-- drops atoms/capsules that match the same noise policy used by promotion,
-- removes orphaned edges pointing at missing or removed memory,
-- rebuilds secondary indexes from canonical artifacts.
+`compact-store` is also safe by default. It only rewrites canonical artifacts when you pass `--apply`.
 
 Use compaction when:
 
-- earlier runtime versions created duplicate entries,
-- benchmarks or audits look inflated by historical noise,
-- the store has accumulated generic memories that should never have been durable,
-- you want a cleaner pre-release baseline.
+- historical runtime behavior learned obvious noise
+- you want cleaner dashboard and metric baselines
+- audits or benchmarks are inflated by old low-value artifacts
+- you want the persisted store to reflect the current memory policy
 
-## Metrics and health
+## Troubleshooting
 
-The MVP is healthy when you can verify all of these:
+If Codex shows:
 
-- hooks run in real Codex sessions,
-- canonical artifacts appear under the store path,
-- `status` shows runtime and learning state,
-- `metrics` shows pack/retrieval/drop/token-savings numbers,
-- `inspect-last-pack` explains injection decisions,
-- benchmarks and quality gates stay green,
-- store analysis shows duplicates/noise under control.
+- `Failed`
+- `error: hook exited with code 127`
 
-## Safety model
+rerun the installer so the global hook config is regenerated with the current Node path:
 
-The product is local-first and fail-closed by default:
+```bash
+node ./adapters/codex/bin/install-global-hooks.mjs
+rg -n "codex-memory-hook\\.mjs" ~/.codex/hooks.json
+```
 
-- redaction runs before persistence,
-- scope isolation prevents cross-repo contamination by default,
-- learning and injection can be disabled safely,
-- semantic mode stays optional,
-- audit artifacts explain what happened.
+Healthy hook commands should start with an absolute Node path, not bare `node`.
 
-Security details live in [docs/security-and-privacy.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/security-and-privacy.md).
+If the plugin installs but no memory appears:
 
-## Repository map
+1. confirm `codex_hooks = true` exists in `~/.codex/config.toml`
+2. confirm `~/.codex/hooks.json` contains `codex-memory-hook.mjs`
+3. confirm you did not disable runtime with `CODEX_MEMORY_HOOKS_ENABLED=false`
+4. run a short real Codex session
+5. check `~/.codex/plugins/codex-memory/data/runtime/status.json`
+6. open the dashboard
+
+## Documentation Map
 
 - [docs/installation.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/installation.md)
 - [docs/architecture.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/architecture.md)
 - [docs/security-and-privacy.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/security-and-privacy.md)
-- [docs/spec-roadmap.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/spec-roadmap.md)
-- [docs/specs/spec-020-public-documentation-and-oss-positioning.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/specs/spec-020-public-documentation-and-oss-positioning.md)
+- [docs/metrics.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/metrics.md)
 - [cli/README.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/cli/README.md)
-
-## Public-release posture
-
-After this pass, the repo is much closer to a usable first public release:
-
-- real runtime activation exists,
-- persistence is observable,
-- learning quality is curated instead of purely permissive,
-- the store can be analyzed and compacted safely,
-- the OSS docs describe the product that actually ships.
-
-The biggest remaining follow-up after this MVP block is broader operator surface work beyond the current maintenance commands, especially richer export/query flows and deeper safety auditing.
+- [docs/spec-roadmap.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/spec-roadmap.md)

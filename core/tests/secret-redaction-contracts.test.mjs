@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-007 defines redaction as a mandatory gate before durable writes", async () => {
+test("defines redaction as a mandatory gate before durable writes", async () => {
   const policy = await loadJson("core/contracts/secret-redaction-policy.v1.json");
 
   assert.equal(policy.spec_id, "SPEC-007");
@@ -21,7 +21,7 @@ test("SPEC-007 defines redaction as a mandatory gate before durable writes", asy
   assert.equal(policy.durable_enforcement.blocked_content_persisted_raw, false);
 });
 
-test("SPEC-007 persistence outcomes are explicit and explainable", async () => {
+test("persistence outcomes are explicit and explainable", async () => {
   const policy = await loadJson("core/contracts/secret-redaction-policy.v1.json");
 
   assert.deepEqual(policy.persistence_outcomes.allowed_states, ["allow", "redact", "block"]);
@@ -36,7 +36,7 @@ test("SPEC-007 persistence outcomes are explicit and explainable", async () => {
   );
 });
 
-test("SPEC-007 covers structured secrets and common free-text leaks", async () => {
+test("covers structured secrets and common free-text leaks", async () => {
   const policy = await loadJson("core/contracts/secret-redaction-policy.v1.json");
 
   assert.ok(
@@ -49,7 +49,7 @@ test("SPEC-007 covers structured secrets and common free-text leaks", async () =
   );
 });
 
-test("SPEC-007 defaults to stricter behavior under uncertainty and backend degradation", async () => {
+test("defaults to stricter behavior under uncertainty and backend degradation", async () => {
   const policy = await loadJson("core/contracts/secret-redaction-policy.v1.json");
 
   assert.equal(policy.fallback_behavior.uncertain_classification_default, "block");

@@ -6,7 +6,7 @@ import path from "node:path";
 const repoRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 const nodeBin = process.execPath;
 
-test("SPEC-018 benchmark CLI emits comparative report for baseline, cheap-first, and cheap-first-plus-semantic", () => {
+test("benchmark CLI emits comparative report for baseline, cheap-first, and cheap-first-plus-semantic", () => {
   const cliScript = path.join(repoRoot, "cli/bin/codex-memory-benchmark.mjs");
   const fixturePath = path.join(repoRoot, "adapters/codex/tests/fixtures/layer4-golden-path-session.json");
 

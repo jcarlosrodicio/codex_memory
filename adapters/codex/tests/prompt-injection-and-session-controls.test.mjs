@@ -52,7 +52,7 @@ function makeAdapterWithSeedMemory() {
   });
 }
 
-test("SPEC-015 defines injection payload shape and independent session controls", async () => {
+test("defines injection payload shape and independent session controls", async () => {
   const contract = await loadJson("adapters/codex/contracts/prompt-injection-session-controls.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-015");
@@ -62,7 +62,7 @@ test("SPEC-015 defines injection payload shape and independent session controls"
   assert.equal(contract.fallback_behavior.pack_generation_failure, "inject_context_false_with_reason");
 });
 
-test("SPEC-015 injects ContextPack before prompt when enabled and exposes injection metadata", async () => {
+test("injects ContextPack before prompt when enabled and exposes injection metadata", async () => {
   const adapter = makeAdapterWithSeedMemory();
 
   adapter.onSessionStart({
@@ -100,7 +100,7 @@ test("SPEC-015 injects ContextPack before prompt when enabled and exposes inject
   assert.equal(before.decision_summary.reason, "context_pack_injected");
 });
 
-test("SPEC-015 disable_injection=true prevents prompt injection but keeps session active", async () => {
+test("disable_injection=true prevents prompt injection but keeps session active", async () => {
   const adapter = makeAdapterWithSeedMemory();
 
   adapter.onSessionStart({

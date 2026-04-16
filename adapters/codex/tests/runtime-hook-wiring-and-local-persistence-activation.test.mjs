@@ -94,7 +94,7 @@ async function invokeHook({ hook, payload, storePath, extraEnv = {} }) {
   return JSON.parse(String(output).trim());
 }
 
-test("SPEC-025 avoids repo-local hooks.json to prevent duplicate activation with global hooks", async () => {
+test("avoids repo-local hooks.json to prevent duplicate activation with global hooks", async () => {
   const pluginManifest = await readJson(".codex-plugin/plugin.json");
   const repoHooksPath = path.join(repoRoot, ".codex/hooks.json");
   assert.equal(existsSync(repoHooksPath), false);
@@ -102,14 +102,14 @@ test("SPEC-025 avoids repo-local hooks.json to prevent duplicate activation with
   assert.equal(typeof pluginManifest.hooks, "undefined");
 });
 
-test("SPEC-025 runtime no longer depends on .codex-plugin/hooks.json", async () => {
+test("runtime no longer depends on .codex-plugin/hooks.json", async () => {
   await assert.rejects(
     readJson(".codex-plugin/hooks.json"),
     /ENOENT/
   );
 
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-runtime-no-plugin-hooks-"));
-  const payloads = realCodexPayloads("s-spec-025-no-plugin-hooks");
+  const payloads = realCodexPayloads("s-no-plugin-hooks");
 
   const started = await invokeHook({
     hook: "SessionStart",
@@ -120,9 +120,9 @@ test("SPEC-025 runtime no longer depends on .codex-plugin/hooks.json", async () 
   assert.equal(started.continue, true);
 });
 
-test("SPEC-025 aligns UserPromptSubmit output with Codex hook contract", async () => {
+test("aligns UserPromptSubmit output with Codex hook contract", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-runtime-userprompt-"));
-  const payloads = realCodexPayloads("s-spec-025-userprompt");
+  const payloads = realCodexPayloads("s-userprompt");
 
   await invokeHook({
     hook: "SessionStart",
@@ -144,7 +144,7 @@ test("SPEC-025 aligns UserPromptSubmit output with Codex hook contract", async (
   }
 });
 
-test("SPEC-025 default persistence root resolves to ~/.codex/plugins/codex-memory/data", () => {
+test("default persistence root resolves to ~/.codex/plugins/codex-memory/data", () => {
   const fakeHome = path.join(tmpdir(), "codex-memory-fake-home-adapter");
   const script = [
     "import { LocalMemoryStore } from './core/src/index.mjs';",
@@ -169,9 +169,9 @@ test("SPEC-025 default persistence root resolves to ~/.codex/plugins/codex-memor
   );
 });
 
-test("SPEC-025 e2e real Codex events write observable artifacts and respect flags", async () => {
+test("e2e real Codex events write observable artifacts and respect flags", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-runtime-e2e-real-"));
-  const payloads = realCodexPayloads("s-spec-025-e2e-real");
+  const payloads = realCodexPayloads("s-e2e-real");
 
   const started = await invokeHook({
     hook: "SessionStart",
@@ -205,7 +205,7 @@ test("SPEC-025 e2e real Codex events write observable artifacts and respect flag
   assert.ok(capsules.length >= 1);
 
   const learningOffStore = await mkdtemp(path.join(tmpdir(), "codex-memory-runtime-e2e-learning-off-"));
-  const learningOffPayloads = realCodexPayloads("s-spec-025-learning-off");
+  const learningOffPayloads = realCodexPayloads("s-learning-off");
 
   await invokeHook({
     hook: "SessionStart",

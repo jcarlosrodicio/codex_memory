@@ -88,9 +88,9 @@ async function readNdjson(filePath) {
     .map((line) => JSON.parse(line));
 }
 
-test("SPEC-021 global memory kill switch disables injection and learning while keeping runtime alive", async () => {
+test("global memory kill switch disables injection and learning while keeping runtime alive", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec021-kill-switch-"));
-  const payloads = realCodexPayloads("s-spec-021-kill-switch");
+  const payloads = realCodexPayloads("s-kill-switch");
 
   const started = await invokeHook({
     hook: "SessionStart",
@@ -136,9 +136,9 @@ test("SPEC-021 global memory kill switch disables injection and learning while k
   assert.equal(capsules.length, 0);
 });
 
-test("SPEC-021 runtime profiles are recorded in runtime status artifacts", async () => {
+test("runtime profiles are recorded in runtime status artifacts", async () => {
   const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec021-profile-"));
-  const payloads = realCodexPayloads("s-spec-021-profile");
+  const payloads = realCodexPayloads("s-profile");
 
   await invokeHook({
     hook: "SessionStart",
@@ -165,4 +165,70 @@ test("SPEC-021 runtime profiles are recorded in runtime status artifacts", async
   assert.equal(typeof status.memory_enabled, "boolean");
   assert.equal(typeof status.learning_enabled, "boolean");
   assert.equal(typeof status.audit_last_updated_at, "string");
+});
+
+test("hooks_enabled defaults to true and false keeps runtime alive while skipping capture, injection, and learning", async () => {
+  const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec021-hooks-enabled-"));
+  const payloads = realCodexPayloads("s-hooks-enabled");
+
+  await invokeHook({
+    hook: "SessionStart",
+    payload: payloads.sessionStart,
+    storePath
+  });
+
+  let statusPath = path.join(storePath, "runtime", "status.json");
+  let status = JSON.parse(await readFile(statusPath, "utf8"));
+  assert.equal(status.hooks_enabled, true);
+
+  const disabledStart = await invokeHook({
+    hook: "SessionStart",
+    payload: {
+      ...payloads.sessionStart,
+      session_id: "s-hooks-disabled"
+    },
+    storePath,
+    extraEnv: {
+      CODEX_MEMORY_HOOKS_ENABLED: "false"
+    }
+  });
+  assert.equal(disabledStart.continue, true);
+
+  const disabledPrompt = await invokeHook({
+    hook: "UserPromptSubmit",
+    payload: {
+      ...payloads.userPromptSubmit,
+      session_id: "s-hooks-disabled"
+    },
+    storePath,
+    extraEnv: {
+      CODEX_MEMORY_HOOKS_ENABLED: "false"
+    }
+  });
+  assert.equal(disabledPrompt.continue, true);
+  assert.equal(disabledPrompt.hookSpecificOutput, undefined);
+
+  const disabledStop = await invokeHook({
+    hook: "Stop",
+    payload: {
+      ...payloads.stop,
+      session_id: "s-hooks-disabled"
+    },
+    storePath,
+    extraEnv: {
+      CODEX_MEMORY_HOOKS_ENABLED: "false"
+    }
+  });
+  assert.equal(disabledStop.continue, true);
+
+  status = JSON.parse(await readFile(statusPath, "utf8"));
+  assert.equal(status.hooks_enabled, false);
+  assert.equal(status.memory_enabled, false);
+  assert.equal(status.learning_enabled, false);
+
+  const store = new LocalMemoryStore({ rootDir: storePath });
+  const currentStore = store.loadMemoryStore();
+  assert.equal(currentStore.atoms.length, 0);
+  assert.equal(currentStore.edges.length, 0);
+  assert.equal(currentStore.capsules.length, 0);
 });

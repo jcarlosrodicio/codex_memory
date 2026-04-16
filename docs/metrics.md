@@ -1,75 +1,83 @@
 # Metrics Strategy
 
-`codex-memory` needs metrics for two different jobs:
+`codex-memory` uses metrics for two jobs:
 
-- prove the product works,
-- help users and contributors diagnose when it does not.
+- help users understand whether memory is helping on real work
+- help contributors diagnose why it is not
 
 ## Metric groups
 
-### 1. Efficiency metrics
+### 1. Prompt outcome metrics
 
-These measure whether memory is reducing prompt cost:
+These answer whether memory is actually helping on real prompts:
 
-- `baseline_prompt_tokens`
-- `memory_pack_tokens`
-- `token_savings_absolute`
-- `token_savings_percent`
-- `pack_fill_rate`
+- `injection_rate`
+- `empty_pack_rate`
+- `avg_token_savings_estimate`
+- `avg_token_savings_on_injected_prompts`
+- `max_token_savings_estimate`
+- `pack_build_count`
+- `prompt_drop_reasons`
 
-### 2. Retrieval quality metrics
+### 2. Learning-quality metrics
 
-These measure whether the right memory is being selected:
+These answer whether the engine is promoting the right memory:
 
-- `retrieval_hit_rate_at_k`
-- `capsule_hit_rate`
-- `graph_expansion_yield`
-- `semantic_assist_rate`
+- `filtered_by_quality_policy`
+- `filtered_reasons`
+- `quality_policy_filtered_reasons`
+- `promoted_atoms`
+- `promoted_capsules`
 
-### 3. Safety and correctness metrics
+### 3. Store-health metrics
 
-These measure whether memory harms usability:
+These answer whether persisted memory quality is degrading over time:
 
-- `scope_contamination_rate`
-- `contradiction_injection_rate`
-- `secret_block_rate`
-- `user_correction_rate`
-- `pack_drop_reason_distribution`
+- artifact counts by type
+- duplicate counts
+- orphan counts
+- `store.noise.detected`
+- `store.noise.rate`
+- `store.noise.by_reason`
+- whether `edges` are still zero
 
 ### 4. Runtime health metrics
 
-These help users understand the current state of the plugin:
+These help users understand the current live state of the plugin:
 
 - `memory_enabled`
 - `learning_enabled`
 - `semantic_mode`
-- `last_pack_build_ms`
-- `last_retrieval_ms`
-- `index_health`
 - `audit_last_updated_at`
+- last pack tokens / retrieved / dropped / savings
+- safety flags such as blocked persistence or redaction
 
 ## Minimum visible metrics for users
 
 The default inspect surface should expose at least:
 
+- whether hooks are enabled,
 - whether memory is on,
 - current semantic mode,
-- last pack size,
-- last token savings estimate,
-- number of retrieved items,
-- number of dropped items,
-- whether any safety filter blocked persistence recently.
+- injection rate and empty-pack rate,
+- average savings overall and on injected prompts,
+- dominant empty-pack reasons,
+- filtered quality-policy reasons,
+- current store noise counts,
+- whether any safety filter blocked persistence recently,
+- whether `edges` are still effectively unused.
 
 Preferred local surfaces:
 
-- Codex app status or plugin panel for the last-run summary,
-- CLI commands such as `status`, `metrics`, or `inspect-last-pack`,
+- the local `dashboard` for daily human use,
+- CLI commands such as `status`, `metrics`, and `inspect-last-pack` for technical inspection,
 - structured local audit files for scripting and long-run analysis.
 
-Implementation planning note:
+Implementation note:
 
-- As soon as `ContextPack` exists, the implementation should expose a minimum metric set: `pack_tokens`, `retrieved_count`, `dropped_count`, `token_savings_estimate`, `memory_enabled`, and `semantic_mode`.
-- Full benchmark depth can come later, but these metrics should not wait until the end of the roadmap.
+- `metrics` is the machine-readable surface.
+- `dashboard` is the recommended human-facing surface for daily use.
+- The runtime must expose enough data to answer “is memory saving tokens or not?” without needing external telemetry.
 
 ## Minimum benchmark metrics for release
 
@@ -84,8 +92,16 @@ Before claiming the plugin works well, benchmark outputs should show:
 
 No single metric is sufficient.
 
-- High token savings with poor recall is a failure.
+- High injected savings with poor `injection_rate` is a failure.
+- High `injection_rate` with high store noise is a failure.
 - High recall with high contamination is a failure.
 - Good retrieval with poor installability is still a product problem.
+
+Practical operator reading:
+
+- `empty_pack_rate` tells you how often the system had nothing useful to inject.
+- `avg_token_savings_on_injected_prompts` tells you how valuable memory is when it actually lands.
+- `prompt_drop_reasons.empty_pack` explains why the system missed those prompts.
+- `store.noise.detected` tells you whether the persisted memory is drifting toward review residue or process chatter.
 
 The goal is balanced performance, not aggressive compression at any cost.

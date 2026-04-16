@@ -9,7 +9,7 @@ async function readDoc(relativePath) {
   return readFile(path.join(repoRoot, relativePath), "utf8");
 }
 
-test("SPEC-020 public docs describe runtime activation, cleanup workflow, and good-memory policy consistently", async () => {
+test("public docs describe runtime activation, cleanup workflow, and good-memory policy consistently", async () => {
   const [
     readme,
     installation,

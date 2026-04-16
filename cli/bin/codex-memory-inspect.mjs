@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { homedir } from "node:os";
+import { buildDashboardReport, openDashboardFile, writeDashboardHtml } from "../src/dashboard.mjs";
 import {
   buildAnalyzeStoreReport,
   buildCompactStoreReport,
@@ -22,7 +23,8 @@ function parseArgs(argv) {
     json: false,
     sessionId: null,
     atomId: null,
-    apply: false
+    apply: false,
+    outputPath: null
   };
 
   for (let index = 3; index < argv.length; index += 1) {
@@ -53,6 +55,11 @@ function parseArgs(argv) {
 
     if (flag === "--apply") {
       args.apply = true;
+    }
+
+    if (flag === "--output" && next) {
+      args.outputPath = path.resolve(next);
+      index += 1;
     }
   }
 
@@ -103,6 +110,30 @@ function runCommand(args) {
       storePath: args.storePath,
       apply: args.apply
     });
+  }
+
+  if (args.command === "dashboard" || args.command === "open-dashboard") {
+    const outputPath = args.outputPath ?? path.join(args.storePath, "runtime", "dashboard.html");
+    const report = buildDashboardReport({
+      storePath: args.storePath,
+      outputPath
+    });
+
+    writeDashboardHtml({
+      report,
+      outputPath
+    });
+
+    const openResult = args.command === "open-dashboard"
+      ? openDashboardFile(outputPath)
+      : { opened: false, command: null };
+
+    return {
+      ...report,
+      generated: true,
+      output_path: outputPath,
+      open: openResult
+    };
   }
 
   throw new Error(`Unsupported command: ${args.command}`);

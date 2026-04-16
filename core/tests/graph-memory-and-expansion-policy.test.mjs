@@ -12,7 +12,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-011 defines a bounded edge taxonomy and expansion limits", async () => {
+test("defines a bounded edge taxonomy and expansion limits", async () => {
   const contract = await loadJson("core/contracts/graph-expansion-policy.v1.json");
 
   assert.equal(contract.spec_id, "SPEC-011");
@@ -29,7 +29,7 @@ test("SPEC-011 defines a bounded edge taxonomy and expansion limits", async () =
   assert.equal(contract.scope_guardrails.can_broaden_scope, false);
 });
 
-test("SPEC-011 graph expansion starts from lexical seeds and respects depth/breadth limits", () => {
+test("graph expansion starts from lexical seeds and respects depth/breadth limits", () => {
   const graph = new GraphExpansionPolicy({
     max_depth: 2,
     max_breadth_per_seed: 2,
@@ -124,7 +124,7 @@ test("SPEC-011 graph expansion starts from lexical seeds and respects depth/brea
   assert.ok(result.stats.expanded_count <= 3);
 });
 
-test("SPEC-011 conflict treatment drops superseded and contradictory candidates deterministically", () => {
+test("conflict treatment drops superseded and contradictory candidates deterministically", () => {
   const graph = new GraphExpansionPolicy();
 
   const result = graph.apply({

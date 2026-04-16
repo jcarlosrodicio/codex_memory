@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-004 defines a versioned configuration schema with strict unknown-key rejection", async () => {
+test("defines a versioned configuration schema with strict unknown-key rejection", async () => {
   const schema = await loadJson("core/contracts/config-schema.v1.json");
 
   assert.equal(schema.spec_id, "SPEC-004");
@@ -24,7 +24,7 @@ test("SPEC-004 defines a versioned configuration schema with strict unknown-key 
   assert.equal(schema.$defs.configLayer.additionalProperties, false);
 });
 
-test("SPEC-004 defines deterministic precedence and required feature modes", async () => {
+test("defines deterministic precedence and required feature modes", async () => {
   const model = await loadJson("core/contracts/config-model.json");
 
   assert.deepEqual(model.precedence_order, [
@@ -39,7 +39,7 @@ test("SPEC-004 defines deterministic precedence and required feature modes", asy
   assert.ok(model.feature_modes.prompt_injection.mode_enum.length > 0);
 });
 
-test("SPEC-004 install profiles include a safe default with semantic mode disabled", async () => {
+test("install profiles include a safe default with semantic mode disabled", async () => {
   const profiles = await loadJson("core/contracts/config-install-profiles.json");
 
   assert.deepEqual(Object.keys(profiles.profiles).sort(), [
@@ -51,7 +51,7 @@ test("SPEC-004 install profiles include a safe default with semantic mode disabl
   assert.equal(profiles.profiles.default.semantic.mode, "off");
 });
 
-test("SPEC-004 defines safe fallback behavior and schema versioning guidance", async () => {
+test("defines safe fallback behavior and schema versioning guidance", async () => {
   const model = await loadJson("core/contracts/config-model.json");
 
   assert.ok(

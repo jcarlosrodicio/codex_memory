@@ -11,7 +11,7 @@ async function loadJson(relativePath) {
   return JSON.parse(raw);
 }
 
-test("SPEC-006 names canonical persisted artifacts for events, atoms, edges, and capsules", async () => {
+test("names canonical persisted artifacts for events, atoms, edges, and capsules", async () => {
   const storeLayout = await loadJson("core/contracts/memory-store-layout.v1.json");
 
   assert.equal(storeLayout.spec_id, "SPEC-006");
@@ -36,7 +36,7 @@ test("SPEC-006 names canonical persisted artifacts for events, atoms, edges, and
   }
 });
 
-test("SPEC-006 index strategy supports filters by scope, type, confidence, and time", async () => {
+test("index strategy supports filters by scope, type, confidence, and time", async () => {
   const storeLayout = await loadJson("core/contracts/memory-store-layout.v1.json");
   const indexes = storeLayout.index_strategy.indexes;
 
@@ -62,7 +62,7 @@ test("SPEC-006 index strategy supports filters by scope, type, confidence, and t
   );
 });
 
-test("SPEC-006 defines explicit versioning with forward failure and controlled migration", async () => {
+test("defines explicit versioning with forward failure and controlled migration", async () => {
   const storeLayout = await loadJson("core/contracts/memory-store-layout.v1.json");
   const versioning = storeLayout.versioning;
 

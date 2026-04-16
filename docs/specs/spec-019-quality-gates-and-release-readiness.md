@@ -40,6 +40,8 @@ If optional semantic features are not release-ready, the project may still ship 
 - Benchmark and audit requirements are explicit.
 - Zero-dependency mode has first-class release coverage.
 - Release gates explicitly allow shipping the graph-enabled zero-dependency MVP before optional semantic retrieval is implemented.
+- Release evidence distinguishes between “memory injects”, “memory saves tokens when injected”, and “memory store quality remains acceptable”.
+- Release readiness includes observable store-noise reporting and operator-visible empty-pack reasoning.
 - Release evidence distinguishes spec completion, milestone completion, and release completion.
 
 ## Risks and open questions

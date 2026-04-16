@@ -11,6 +11,7 @@ This package translates Codex session lifecycle events into normalized inputs fo
 - Injection and control wiring that consumes core outputs
 - Session-level controls (`disable_injection`, `disable_learning`)
 - Local-first installation contract for Codex app and Codex CLI compatibility
+- Runtime enable/disable control through `hooks_enabled` (default on)
 
 ## SPEC-003 hook contracts
 
@@ -43,6 +44,12 @@ Recommended activation for production usage across repositories is global hooks 
 
 This performs a safe merge into `~/.codex/hooks.json` and preserves non-Codex Memory hooks.
 It also enables `codex_hooks = true` under `[features]` in `~/.codex/config.toml`.
+
+Runtime behavior remains enabled by default after install. If you explicitly set:
+
+- `CODEX_MEMORY_HOOKS_ENABLED=false`
+
+the hooks still execute safely, but the plugin suspends capture, injection, and durable learning until you enable it again.
 
 Why no repo-local hooks file in this repo:
 
