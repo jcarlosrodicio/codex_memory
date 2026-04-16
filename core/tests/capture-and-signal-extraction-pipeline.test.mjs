@@ -123,7 +123,7 @@ test("durable-memory policy rejects review/meta chatter and keeps durable repo k
   );
 
   assert.deepEqual(
-    assessMemoryQuality("El test nuevo en `/Users/juanca/project/adapters/codex/tests/runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix", { atomType: "workflow" }),
+    assessMemoryQuality("El test nuevo en `/workspace/adapters/codex/tests/runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix", { atomType: "workflow" }),
     { accepted: false, reason: "path_reference_noise" }
   );
 
@@ -138,7 +138,7 @@ test("durable-memory policy rejects review/meta chatter and keeps durable repo k
   );
 
   assert.deepEqual(
-    assessMemoryQuality("El plan quedó cerrado en [2026-04-15-routine-builder-qa-fixes.md](/Users/juanca/project/docs/superpowers/plans/2026-04-15-routine-builder-qa-fixes.md:1) con Status: Completed on 2026-04-15", { atomType: "bugfix" }),
+    assessMemoryQuality("El plan quedó cerrado en [2026-04-15-routine-builder-qa-fixes.md](/workspace/docs/superpowers/plans/2026-04-15-routine-builder-qa-fixes.md:1) con Status: Completed on 2026-04-15", { atomType: "bugfix" }),
     { accepted: false, reason: "process_reporting_noise" }
   );
 

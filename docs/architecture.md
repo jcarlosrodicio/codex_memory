@@ -126,7 +126,7 @@ This keeps cleanup explicit, deterministic, zero-deps, and safe to re-run.
 
 ## Documentation map
 
-- [docs/installation.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/installation.md)
-- [docs/security-and-privacy.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/security-and-privacy.md)
-- [docs/spec-roadmap.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/spec-roadmap.md)
-- [docs/specs/README.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/specs/README.md)
+- [docs/installation.md](installation.md)
+- [docs/security-and-privacy.md](security-and-privacy.md)
+- [docs/spec-roadmap.md](spec-roadmap.md)
+- [docs/specs/README.md](specs/README.md)

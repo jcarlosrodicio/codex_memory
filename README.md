@@ -141,7 +141,7 @@ Practical reading:
 - `below_lexical_threshold` dominating empty packs usually means memory exists, but relevance is too weak for that prompt
 - visible store noise means compaction is probably worth running
 
-More detail lives in [docs/metrics.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/metrics.md).
+More detail lives in [docs/metrics.md](docs/metrics.md).
 
 ## Good Memory Policy
 
@@ -251,9 +251,9 @@ If the plugin installs but no memory appears:
 
 ## Documentation Map
 
-- [docs/installation.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/installation.md)
-- [docs/architecture.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/architecture.md)
-- [docs/security-and-privacy.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/security-and-privacy.md)
-- [docs/metrics.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/metrics.md)
-- [cli/README.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/cli/README.md)
-- [docs/spec-roadmap.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/spec-roadmap.md)
+- [docs/installation.md](docs/installation.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/security-and-privacy.md](docs/security-and-privacy.md)
+- [docs/metrics.md](docs/metrics.md)
+- [cli/README.md](cli/README.md)
+- [docs/spec-roadmap.md](docs/spec-roadmap.md)

@@ -94,6 +94,6 @@ For a user or maintainer reading this repository:
 
 ## Related documents
 
-- [docs/architecture.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/architecture.md)
-- [docs/installation.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/installation.md)
-- [docs/spec-roadmap.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/spec-roadmap.md)
+- [docs/architecture.md](architecture.md)
+- [docs/installation.md](installation.md)
+- [docs/spec-roadmap.md](spec-roadmap.md)

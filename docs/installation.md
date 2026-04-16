@@ -126,7 +126,7 @@ node ".../codex-memory-hook.mjs"
 They should look more like:
 
 ```text
-"/opt/homebrew/bin/node" ".../codex-memory-hook.mjs"
+"/absolute/path/to/node" ".../codex-memory-hook.mjs"
 ```
 
 This repository intentionally does not ship an active repo-local `.codex/hooks.json`, because global and repo-local activation together cause duplicate execution inside `codex-memory`.
@@ -293,8 +293,8 @@ Common interpretations:
 
 ## Related Docs
 
-- [README.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/README.md)
-- [cli/README.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/cli/README.md)
-- [docs/metrics.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/metrics.md)
-- [docs/architecture.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/architecture.md)
-- [docs/security-and-privacy.md](/Users/juanca/Library/CloudStorage/SynologyDrive-hermes/Desarrollo/codex-memory/docs/security-and-privacy.md)
+- [README.md](../README.md)
+- [cli/README.md](../cli/README.md)
+- [docs/metrics.md](metrics.md)
+- [docs/architecture.md](architecture.md)
+- [docs/security-and-privacy.md](security-and-privacy.md)

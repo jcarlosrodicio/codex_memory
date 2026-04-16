@@ -277,7 +277,7 @@ test("rejects generic prompt scaffolding and review artifacts from durable promo
           id: "sig-generic-4",
           event_id: "evt-generic-4",
           atom_type: "workflow",
-          content: "El test nuevo en `/Users/juanca/project/adapters/codex/tests/runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix",
+          content: "El test nuevo en `/workspace/adapters/codex/tests/runtime-hook-wiring-and-local-persistence-activation.test.mjs` cubre el fix",
           scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
           confidence: 0.9,
           created_at: "2026-04-14T10:02:06.000Z"
