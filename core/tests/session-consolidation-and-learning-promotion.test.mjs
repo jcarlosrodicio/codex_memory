@@ -327,3 +327,83 @@ test("extractor suppresses generic scaffolding while preserving durable workflow
     ]
   );
 });
+
+test("extractor normalizes stable knowledge out of session narrative and drops ephemeral validation chatter", () => {
+  const extractor = new SessionSignalExtractor({
+    maxSignalsPerEvent: 8,
+    minConfidence: 0.4
+  });
+
+  const result = extractor.extractDetailed({
+    id: "evt-016-session-narrative",
+    event_type: "AFTER_RESPONSE",
+    occurred_at: "2026-04-16T08:30:00.000Z",
+    scope: { level: "repository", repository_id: "codex-memory", scope_key: "repo::codex-memory" },
+    payload: {
+      response_excerpt: [
+        "He revisado el repo y no existe una clave real llamada `hooks_enabled`; lo que sí existe hoy es `codex_hooks = true` en `~/.codex/config.toml`, que el instalador ya fuerza a `true`.",
+        "He revisado lo trackeado y no he visto tokens, claves, secrets, ni credenciales reales.",
+        "Eso hace que en `origin/main` ya no aparezca en la versión actual del repo."
+      ].join(" ")
+    }
+  });
+
+  assert.deepEqual(
+    result.signals.map((signal) => signal.content),
+    [
+      "`hooks_enabled` is not a real config key; `codex_hooks = true` in `~/.codex/config.toml` is the real host setting, and the installer forces it to `true`"
+    ]
+  );
+  assert.ok(result.dropped.some((item) => item.reason === "session_validation_noise"));
+  assert.ok(result.dropped.some((item) => item.reason === "session_result_narrative_noise"));
+});
+
+test("consolidation persists normalized durable content instead of raw session narrative", () => {
+  const consolidator = new SessionConsolidator({
+    minPromotionConfidence: 0.68,
+    now: () => "2026-04-16T08:45:00.000Z"
+  });
+
+  const memoryStore = { atoms: [], edges: [], capsules: [] };
+
+  const result = consolidator.consolidate({
+    sessionState: {
+      session_ref: "s-016-normalized",
+      signal_buffer: [
+        {
+          id: "sig-session-narrative",
+          event_id: "evt-session-narrative",
+          atom_type: "workflow",
+          content: "He cambiado el plugin para que `hooks_enabled` sea efectivamente `true` por defecto en runtime, y para que `false` deje el plugin instalado pero inactivo",
+          scope: { level: "repository", repository_id: "codex-memory", scope_key: "repo::codex-memory" },
+          confidence: 0.91,
+          created_at: "2026-04-16T08:38:00.000Z"
+        },
+        {
+          id: "sig-session-result",
+          event_id: "evt-session-result",
+          atom_type: "fact",
+          content: "Eso hace que en `origin/main` ya no aparezca en la versión actual del repo",
+          scope: { level: "repository", repository_id: "codex-memory", scope_key: "repo::codex-memory" },
+          confidence: 0.91,
+          created_at: "2026-04-16T08:39:00.000Z"
+        }
+      ]
+    },
+    memoryStore,
+    disableLearning: false
+  });
+
+  assert.deepEqual(
+    result.promoted_atoms.map((atom) => atom.content),
+    [
+      "`hooks_enabled` defaults to `true` in plugin runtime; setting it to `false` keeps the plugin installed but inactive"
+    ]
+  );
+  assert.ok(
+    result.dropped.some(
+      (item) => item.candidate_id === "sig-session-result" && item.quality_reason === "session_result_narrative_noise"
+    )
+  );
+  assert.match(result.promoted_capsule.summary, /`hooks_enabled` defaults to `true` in plugin runtime/);
+});

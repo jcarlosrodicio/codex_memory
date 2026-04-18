@@ -29,6 +29,10 @@ These answer whether the engine is promoting the right memory:
 - `promoted_atoms`
 - `promoted_capsules`
 
+Important interpretation detail:
+
+- session-storytelling reasons such as `session_validation_noise`, `session_narrative_noise`, and `session_result_narrative_noise` should be visible separately from generic chatter so durable-memory drift is easy to diagnose.
+
 ### 3. Store-health metrics
 
 These answer whether persisted memory quality is degrading over time:

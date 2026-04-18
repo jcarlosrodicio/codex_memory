@@ -151,7 +151,12 @@ export class SessionConsolidator {
         continue;
       }
 
-      const redaction = this.redactionGate.inspect(candidate.content, { id: candidate.id });
+      const durableContent = quality.normalized_content ?? candidate.content;
+      const durableCandidate = {
+        ...candidate,
+        content: durableContent
+      };
+      const redaction = this.redactionGate.inspect(durableContent, { id: candidate.id });
       if (redaction.outcome === "block") {
         dropped.push({
           candidate_id: candidate.id,
@@ -180,8 +185,8 @@ export class SessionConsolidator {
         continue;
       }
 
-      const superseded = findSupersededAtoms(candidate, [...durableAtoms, ...promotedAtoms]);
-      const contradicts = findContradictAtoms(candidate, [...durableAtoms, ...promotedAtoms]);
+      const superseded = findSupersededAtoms(durableCandidate, [...durableAtoms, ...promotedAtoms]);
+      const contradicts = findContradictAtoms(durableCandidate, [...durableAtoms, ...promotedAtoms]);
 
       const atomId = makeDeterministicId("atom", [candidate.scope.scope_key, candidate.atom_type, redaction.value]);
       const atom = {
@@ -198,7 +203,7 @@ export class SessionConsolidator {
         confidence: Number(candidate.confidence.toFixed(4)),
         created_at: nowIso(this.now),
         source_event_ids: [candidate.event_id],
-        tags: dedupeBy(tokenize(candidate.content), (value) => value).slice(0, 8),
+        tags: dedupeBy(tokenize(durableContent), (value) => value).slice(0, 8),
         supersedes: superseded.map((item) => item.id)
       };
 

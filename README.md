@@ -165,7 +165,10 @@ The runtime rejects low-value durable noise, including examples like:
 - review chatter such as `No encontré findings nuevos en este fix`
 - process notes such as `If not blocked, summarize files edited so far...`
 - absolute home-path review fragments and line-specific file commentary with no reusable rule
+- session narrative such as `He revisado...`, `He cambiado...`, `He renombrado...`, or `Eso hace que...`
 - subjective conversational residue such as “mi conclusión es…”
+
+When a session-style sentence contains a clearly stable product fact, the policy may rewrite it into a durable form instead of storing the original narrative wording.
 
 This policy is deterministic, zero-deps, and shared by both promotion and store cleanup.
 

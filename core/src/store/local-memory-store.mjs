@@ -239,12 +239,27 @@ function incrementCounter(bucket, key) {
   bucket[token] = Number(bucket[token] ?? 0) + 1;
 }
 
-function qualityAssessmentForRecord(record) {
+function qualityAssessmentForRecord(record, options = {}) {
   if (record?.atom_type) {
     return assessMemoryQuality(record.content, { atomType: record.atom_type });
   }
 
   if (record?.summary) {
+    const noisySourceIds = new Set(
+      Array.isArray(options.noisySourceIds)
+        ? options.noisySourceIds.map((item) => String(item))
+        : options.noisySourceIds instanceof Set
+          ? [...options.noisySourceIds].map((item) => String(item))
+          : []
+    );
+    const sourceIds = Array.isArray(record.source_memory_ids)
+      ? record.source_memory_ids.map((item) => String(item))
+      : [];
+
+    if (sourceIds.some((id) => noisySourceIds.has(id))) {
+      return { accepted: false, reason: "source_memory_noise_inherited" };
+    }
+
     return assessMemoryQuality(record.summary, { atomType: "capsule" });
   }
 
@@ -544,9 +559,16 @@ export class LocalMemoryStore {
       capsules: analyzeArtifactRecords("capsules", memoryStore.capsules)
     };
 
+    const noisyAtomIds = new Set(
+      (Array.isArray(memoryStore.atoms) ? memoryStore.atoms : [])
+        .filter((record) => isNoiseMemoryRecord(record))
+        .map((record) => String(record.id))
+    );
     const noise = {
       atoms: (Array.isArray(memoryStore.atoms) ? memoryStore.atoms : []).filter((record) => isNoiseMemoryRecord(record)),
-      capsules: (Array.isArray(memoryStore.capsules) ? memoryStore.capsules : []).filter((record) => isNoiseMemoryRecord(record))
+      capsules: (Array.isArray(memoryStore.capsules) ? memoryStore.capsules : []).filter((record) => isNoiseMemoryRecord(record, {
+        noisySourceIds: noisyAtomIds
+      }))
     };
     const noiseReasonCounts = {
       atoms: {},
@@ -558,7 +580,9 @@ export class LocalMemoryStore {
     }
 
     for (const record of noise.capsules) {
-      incrementCounter(noiseReasonCounts.capsules, qualityAssessmentForRecord(record).reason);
+      incrementCounter(noiseReasonCounts.capsules, qualityAssessmentForRecord(record, {
+        noisySourceIds: noisyAtomIds
+      }).reason);
     }
 
     const validMemoryIds = new Set([
@@ -702,7 +726,9 @@ export class LocalMemoryStore {
 
     const dedupedCapsulesBeforeQuality = dedupedCapsules.length;
     dedupedCapsules = dedupedCapsules.filter((record) => {
-      return !isNoiseMemoryRecord(record);
+      return !isNoiseMemoryRecord(record, {
+        noisySourceIds: removedNoiseAtomIds
+      });
     });
     removedBreakdown.capsules.noise = dedupedCapsulesBeforeQuality - dedupedCapsules.length;
 

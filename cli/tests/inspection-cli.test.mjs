@@ -157,6 +157,15 @@ test("inspection CLI analyzes and compacts the store only with explicit apply", 
       created_at: "2026-04-14T10:10:00.000Z"
     },
     {
+      id: "atom-noise-2",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      atom_type: "fact",
+      content: "He revisado lo trackeado y no he visto tokens, claves, secrets, ni credenciales reales",
+      confidence: 0.72,
+      created_at: "2026-04-14T10:10:30.000Z"
+    },
+    {
       id: "atom-good-1",
       scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
       provenance: { producer: "test" },
@@ -166,33 +175,51 @@ test("inspection CLI analyzes and compacts the store only with explicit apply", 
       created_at: "2026-04-14T10:11:00.000Z"
     }
   );
+  memoryStore.capsules.push(
+    {
+      id: "capsule-noise-inherited",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      summary: "Session learned durable fact",
+      source_memory_ids: ["atom-noise-2"],
+      confidence: 0.72,
+      created_at: "2026-04-14T10:10:45.000Z"
+    }
+  );
 
   store.rewriteCanonicalArtifact("events", memoryStore.events);
   store.rewriteCanonicalArtifact("atoms", memoryStore.atoms);
+  store.rewriteCanonicalArtifact("capsules", memoryStore.capsules);
   store.rebuildIndexes(memoryStore);
 
   const analysis = runInspect(["analyze-store", "--store-path", storePath, "--json"]);
   assert.equal(analysis.command, "analyze-store");
   assert.equal(analysis.duplicates.events, 1);
-  assert.equal(analysis.noise.atoms, 1);
+  assert.equal(analysis.noise.atoms, 2);
+  assert.equal(analysis.noise.capsules, 1);
   assert.equal(typeof analysis.noise_reasons.atoms.generic_system_scaffolding, "number");
+  assert.equal(typeof analysis.noise_reasons.atoms.session_validation_noise, "number");
+  assert.equal(typeof analysis.noise_reasons.capsules.source_memory_noise_inherited, "number");
 
   const dryRun = runInspect(["compact-store", "--store-path", storePath, "--json"]);
   assert.equal(dryRun.command, "compact-store");
   assert.equal(dryRun.applied, false);
   assert.match(dryRun.reason, /requires --apply/);
-  assert.equal(store.loadMemoryStore().atoms.length, 2);
+  assert.equal(store.loadMemoryStore().atoms.length, 3);
 
   const applied = runInspect(["compact-store", "--store-path", storePath, "--apply", "--json"]);
   assert.equal(applied.command, "compact-store");
   assert.equal(applied.applied, true);
   assert.equal(applied.removed.events, 1);
-  assert.equal(applied.removed.atoms, 1);
-  assert.equal(applied.removed_breakdown.atoms.noise, 1);
+  assert.equal(applied.removed.atoms, 2);
+  assert.equal(applied.removed.capsules, 1);
+  assert.equal(applied.removed_breakdown.atoms.noise, 2);
+  assert.equal(applied.removed_breakdown.capsules.noise, 1);
 
   const reloaded = store.loadMemoryStore();
   assert.equal(reloaded.events.length, 1);
   assert.equal(reloaded.atoms.length, 1);
+  assert.equal(reloaded.capsules.length, 0);
   assert.equal(reloaded.atoms[0].id, "atom-good-1");
 });
 
@@ -243,6 +270,7 @@ test("metrics expose learning-quality rejections from the latest audited session
   assert.ok(metrics.learning.sessions_observed >= 1);
   assert.ok(metrics.learning.filtered_by_quality_policy >= 1);
   assert.ok(metrics.learning.filtered_reasons.review_chatter >= 1);
+  assert.ok(metrics.learning.quality_policy_filtered_reasons.review_chatter >= 1);
   assert.equal(typeof metrics.prompts.injection_rate, "number");
   assert.equal(typeof metrics.prompts.empty_pack_rate, "number");
   assert.equal(typeof metrics.prompts.avg_token_savings_on_injected_prompts, "number");
@@ -250,6 +278,60 @@ test("metrics expose learning-quality rejections from the latest audited session
   assert.equal(typeof metrics.prompt_drop_reasons.empty_pack, "object");
   assert.equal(typeof metrics.store.artifacts.atoms, "number");
   assert.equal(typeof metrics.store.edges.zero_edges_visible, "boolean");
+});
+
+test("metrics expose session narrative quality reasons distinctly from other noise", async () => {
+  const storePath = await mkdtemp(path.join(tmpdir(), "codex-memory-spec017-session-narrative-metrics-"));
+  const runtimeRoot = path.join(storePath, "runtime");
+
+  const audits = [
+    {
+      audit_schema_version: "1",
+      id: "audit-stop-session-narrative",
+      occurred_at: "2026-04-16T10:15:00.000Z",
+      session_id: "s-session-narrative",
+      hook_event_name: "Stop",
+      learning: {
+        rejected_by_quality_policy: 3,
+        filtered_reasons: {
+          session_validation_noise: 1,
+          session_result_narrative_noise: 1,
+          session_narrative_noise: 1
+        },
+        promoted_atoms: 1,
+        promoted_capsule: true
+      }
+    }
+  ];
+
+  await import("node:fs/promises").then(({ mkdir, writeFile }) => Promise.all([
+    mkdir(runtimeRoot, { recursive: true }),
+    writeFile(path.join(runtimeRoot, "audit.ndjson"), `${audits.map((item) => JSON.stringify(item)).join("\n")}\n`, "utf8"),
+    writeFile(path.join(runtimeRoot, "status.json"), JSON.stringify({
+      memory_enabled: true,
+      learning_enabled: true,
+      semantic_mode: "off",
+      metrics: {
+        pack_tokens: 0,
+        retrieved_count: 0,
+        dropped_count: 0,
+        token_savings_estimate: 0
+      },
+      safety: {
+        blocked_persistence_detected: false,
+        redaction_detected: false,
+        warning_count: 0
+      }
+    }, null, 2), "utf8")
+  ]));
+
+  const metrics = runInspect(["metrics", "--store-path", storePath, "--json"]);
+  assert.equal(metrics.learning.filtered_reasons.session_validation_noise, 1);
+  assert.equal(metrics.learning.filtered_reasons.session_result_narrative_noise, 1);
+  assert.equal(metrics.learning.filtered_reasons.session_narrative_noise, 1);
+  assert.equal(metrics.learning.quality_policy_filtered_reasons.session_validation_noise, 1);
+  assert.equal(metrics.learning.quality_policy_filtered_reasons.session_result_narrative_noise, 1);
+  assert.equal(metrics.learning.quality_policy_filtered_reasons.session_narrative_noise, 1);
 });
 
 test("metrics compute injection rate, empty-pack rate, injected savings, and breakdowns", async () => {

@@ -162,3 +162,60 @@ test("durable-memory policy rejects review/meta chatter and keeps durable repo k
     true
   );
 });
+
+test("durable-memory policy filters session narrative and only normalizes clearly durable rewrites", () => {
+  assert.deepEqual(
+    assessMemoryQuality(
+      "He revisado el repo y no existe una clave real llamada `hooks_enabled`; lo que sí existe hoy es `codex_hooks = true` en `~/.codex/config.toml`, que el instalador ya fuerza a `true`",
+      { atomType: "fact" }
+    ),
+    {
+      accepted: true,
+      reason: "durable_memory_candidate",
+      normalized_content: "`hooks_enabled` is not a real config key; `codex_hooks = true` in `~/.codex/config.toml` is the real host setting, and the installer forces it to `true`",
+      normalization_reason: "session_narrative_review_to_stable_fact"
+    }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality(
+      "He cambiado el plugin para que `hooks_enabled` sea efectivamente `true` por defecto en runtime, y para que `false` deje el plugin instalado pero inactivo",
+      { atomType: "workflow" }
+    ),
+    {
+      accepted: true,
+      reason: "durable_memory_candidate",
+      normalized_content: "`hooks_enabled` defaults to `true` in plugin runtime; setting it to `false` keeps the plugin installed but inactive",
+      normalization_reason: "session_narrative_runtime_default_to_stable_fact"
+    }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality(
+      "He renombrado los tests para que en el repositorio público no aparezcan como `spec-021...` ni en nombres de archivo ni en títulos de `test(...)`",
+      { atomType: "fact" }
+    ),
+    {
+      accepted: true,
+      reason: "durable_memory_candidate",
+      normalized_content: "Public test names should avoid internal spec identifiers in filenames and test titles",
+      normalization_reason: "session_narrative_test_naming_to_rule"
+    }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality(
+      "Eso hace que en `origin/main` ya no aparezca en la versión actual del repo",
+      { atomType: "fact" }
+    ),
+    { accepted: false, reason: "session_result_narrative_noise" }
+  );
+
+  assert.deepEqual(
+    assessMemoryQuality(
+      "He revisado lo trackeado y no he visto tokens, claves, secrets, ni credenciales reales",
+      { atomType: "fact" }
+    ),
+    { accepted: false, reason: "session_validation_noise" }
+  );
+});

@@ -143,7 +143,7 @@ export class SessionSignalExtractor {
         event_id: memoryEvent.id,
         atom_type: match.atom_type,
         signal_type: match.atom_type,
-        content: sentence,
+        content: quality.normalized_content ?? sentence,
         scope: memoryEvent.scope,
         confidence,
         created_at: memoryEvent.occurred_at,
@@ -151,7 +151,8 @@ export class SessionSignalExtractor {
           producer: "SessionSignalExtractor",
           source_event_type: memoryEvent.event_type,
           source_event_id: memoryEvent.id,
-          matched_keywords: match.matched_keywords
+          matched_keywords: match.matched_keywords,
+          normalization_reason: quality.normalization_reason ?? null
         }
       });
 

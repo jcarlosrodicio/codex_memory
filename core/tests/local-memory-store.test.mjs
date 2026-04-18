@@ -294,6 +294,15 @@ test("local store analyzes duplicates and noise, compacts safely, and rebuilds i
       source_memory_ids: ["atom-good"],
       confidence: 0.9,
       created_at: "2026-04-14T10:13:01.000Z"
+    },
+    {
+      id: "capsule-noise-inherited",
+      scope: { level: "repository", repository_id: "repo-a", scope_key: "repo::repo-a" },
+      provenance: { producer: "test" },
+      summary: "Session learned durable fact",
+      source_memory_ids: ["atom-noise-a"],
+      confidence: 0.9,
+      created_at: "2026-04-14T10:13:02.000Z"
     }
   );
 
@@ -309,17 +318,20 @@ test("local store analyzes duplicates and noise, compacts safely, and rebuilds i
   assert.equal(analysis.duplicate_counts.edges, 1);
   assert.equal(analysis.duplicate_counts.capsules, 1);
   assert.equal(analysis.noise_counts.atoms, 2);
+  assert.equal(analysis.noise_counts.capsules, 1);
   assert.equal(analysis.orphan_counts.edges, 1);
   assert.equal(analysis.noise_reason_counts.atoms.generic_system_scaffolding, 2);
+  assert.equal(analysis.noise_reason_counts.capsules.source_memory_noise_inherited, 1);
 
   const compacted = store.compactArtifacts({ apply: true });
   assert.equal(compacted.applied, true);
   assert.equal(compacted.removed.events, 1);
   assert.equal(compacted.removed.atoms, 2);
   assert.equal(compacted.removed.edges, 3);
-  assert.equal(compacted.removed.capsules, 1);
+  assert.equal(compacted.removed.capsules, 2);
   assert.equal(compacted.removed_breakdown.edges.duplicates, 1);
   assert.equal(compacted.removed_breakdown.edges.orphans, 2);
+  assert.equal(compacted.removed_breakdown.capsules.noise, 1);
 
   const reloaded = store.loadMemoryStore();
   assert.equal(reloaded.events.length, 2);
